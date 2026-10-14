@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# 环境变量
+.env
+.env.local
+
+# SQLite 数据库
+*.db
+*.db-journal
+
+# 系统文件
+.DS_Store
+
+# Next.js 构建产物
+.next/
+
+.next
+
+public/
