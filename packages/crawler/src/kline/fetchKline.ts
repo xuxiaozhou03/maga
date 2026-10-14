@@ -43,7 +43,6 @@ export async function fetchKline(code: string) {
       newKline.amount,
     ]);
   }
-
   const fields = [
     "date",
     "preClose",

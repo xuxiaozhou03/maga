@@ -52,18 +52,19 @@ export async function fetchEtfs() {
   const maga =
     list
       .sort((a, b) => a.trackIndex?.localeCompare(b.trackIndex ?? "") ?? 0)
-      .filter((etf) =>
-        [
-          "NDX.GI",
-          "SPTR500N.SPI",
-          "NDXTMC.GI",
-          "SPX.GI",
-          "DJI.GI",
-          "750108.MI",
-          "NBI.GI",
-          "SPSIBI.SPI",
-          "SP5CSSUP.SPI",
-        ].includes(etf.trackIndex || ""),
+      .filter(
+        (etf) =>
+          [
+            "NDX.GI",
+            "SPTR500N.SPI",
+            "NDXTMC.GI",
+            "SPX.GI",
+            "DJI.GI",
+            "750108.MI",
+            "NBI.GI",
+            "SPSIBI.SPI",
+            "SP5CSSUP.SPI",
+          ].includes(etf.trackIndex || "") || etf.code === "510300.SH",
       ) ?? null;
   const arr = [["code", "name", "scale", "trackingIndex", "trackIndex"]];
   maga.forEach((etf) => {
