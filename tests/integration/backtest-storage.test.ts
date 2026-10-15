@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/services/prisma";
 import { ENGINE_VERSION, runBacktest } from "@/services/backtest/engine/engine";
-import { buyAndHoldStrategy } from "@/services/backtest/engine/builtin-strategies";
+import { buyAndHoldStrategy } from "@/services/strategy/examples/buy-and-hold";
 import type { BacktestConfig, MarketSeries } from "@/services/backtest/types";
 import {
   deleteBacktestRun,

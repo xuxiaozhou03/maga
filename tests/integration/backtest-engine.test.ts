@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { moneyEquals } from "@/lib/math";
 import { runBacktest } from "@/services/backtest/engine/engine";
-import {
-  buyAndHoldStrategy,
-  movingAverageCrossStrategy,
-} from "@/services/backtest/engine/builtin-strategies";
+import { buyAndHoldStrategy } from "@/services/strategy/examples/buy-and-hold";
+import { movingAverageCrossStrategy } from "@/services/strategy/examples/moving-average-cross";
 import type { BacktestConfig, MarketSeries } from "@/services/backtest/types";
 
 const DATES = [

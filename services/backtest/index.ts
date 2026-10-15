@@ -9,4 +9,3 @@ export * from "./metrics/metrics";
 export * from "./indicators/indicators";
 export * from "./engine/engine";
 export * from "./engine/data";
-export * from "./engine/builtin-strategies";

@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { moneyEquals } from "@/lib/math";
 import { prisma } from "@/services/prisma";
 import { runBacktestOnDatabase } from "@/services/backtest/engine/data";
-import { buyAndHoldStrategy } from "@/services/backtest/engine/builtin-strategies";
+import { buyAndHoldStrategy } from "@/services/strategy/examples/buy-and-hold";
 import { getKlineFingerprint } from "@/services/repositories/kline.repository";
 import {
   DEFAULT_ETF_FEE,

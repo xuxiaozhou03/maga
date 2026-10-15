@@ -1,49 +1,12 @@
 /**
- * 内置示例策略。
+ * 示例策略：均线交叉。
  *
- * 仅用于验证通用策略系统与回测引擎，不作为引擎内部的硬编码分支
- * （对应 PRD 第 7 节）。
+ * 短均线上穿长均线买入，下穿卖出，始终满仓或空仓。
+ * 运行：pnpm strategy:run services/strategy/examples/moving-average-cross.ts --code 510300.SH
  */
 
-import { lastValue, sma, valueAtOffset } from "@/services/backtest/indicators/indicators";
-import type { Strategy } from "./engine";
-
-export type BuyAndHoldParams = {
-  /** 目标 ETF 代码，缺省取回测配置中的第一个。 */
-  code?: string;
-};
-
-type BuyAndHoldState = {
-  /** 是否已经建过仓（建仓前允许因拒单在后续交易日重试）。 */
-  bought: boolean;
-};
-
-/** 买入持有：首次可成交日一次性买入并持有到期末。 */
-export const buyAndHoldStrategy: Strategy<BuyAndHoldParams, BuyAndHoldState> = {
-  name: "买入持有",
-  description: "在首个有行情的交易日按可用资金买入，之后一直持有。",
-  params: {},
-  initialize: () => ({ bought: false }),
-  onBar(ctx, state) {
-    const code = ctx.params.code ?? ctx.codes[0];
-    if (!ctx.codes.includes(code)) {
-      throw new Error(`buyAndHold: ${code} 不在回测的 ETF 集合内`);
-    }
-
-    if (state.bought) return {};
-    if (!ctx.bar(code)) return {};
-
-    if (ctx.position(code)) {
-      state.bought = true;
-      return {};
-    }
-
-    return {
-      orders: [{ code, side: "buy", percent: 1, reason: "买入持有：首次建仓" }],
-      logs: [`${ctx.date} 建仓 ${code}`],
-    };
-  },
-};
+import { sma, lastValue, valueAtOffset } from "@/services/backtest/indicators/indicators";
+import { defineStrategy } from "@/services/strategy/types";
 
 export type MaCrossParams = {
   code?: string;
@@ -55,8 +18,7 @@ type MaCrossState = {
   lastSignal: "golden" | "death" | null;
 };
 
-/** 均线交叉：短均线上穿长均线买入，下穿卖出。 */
-export const movingAverageCrossStrategy: Strategy<MaCrossParams, MaCrossState> = {
+export const movingAverageCrossStrategy = defineStrategy<MaCrossParams, MaCrossState>({
   name: "均线交叉",
   description: "短均线上穿长均线买入，下穿卖出，始终满仓或空仓。",
   params: { fast: 5, slow: 20 },
@@ -106,9 +68,6 @@ export const movingAverageCrossStrategy: Strategy<MaCrossParams, MaCrossState> =
 
     return {};
   },
-};
+});
 
-export const BUILTIN_STRATEGIES = {
-  buyAndHold: buyAndHoldStrategy,
-  movingAverageCross: movingAverageCrossStrategy,
-} as const;
+export default movingAverageCrossStrategy;
