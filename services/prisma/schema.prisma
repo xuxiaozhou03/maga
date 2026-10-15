@@ -39,3 +39,125 @@ model Kline {
   @@index([code, date])
   @@map("kline")
 }
+
+// ============================================================
+// 以下为回测模块新增模型（纯新增，不改动 etf / kline）。
+// 迁移方式：prisma db push（本项目已确定不引入 prisma migrate）。
+// ============================================================
+
+/// 策略
+model Strategy {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+
+  versions StrategyVersion[]
+
+  @@map("strategy")
+}
+
+/// 策略版本（保存后不可原地覆盖）
+model StrategyVersion {
+  id              String   @id @default(cuid())
+  strategyId      String
+  version         Int
+  sourceCode      String
+  sourceHash      String
+  parameterSchema String?
+  apiVersion      String
+  createdAt       DateTime @default(now())
+
+  strategy     Strategy      @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  backtestRuns BacktestRun[]
+
+  @@unique([strategyId, version])
+  @@index([strategyId])
+  @@map("strategy_version")
+}
+
+/// 回测任务与配置快照
+model BacktestRun {
+  id                String    @id @default(cuid())
+  strategyVersionId String?
+  status            String
+  startDate         Int
+  endDate           Int
+  initialCash       Float
+  parametersJson    String
+  configJson        String
+  engineVersion     String
+  dataFingerprint   String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
+
+  strategyVersion StrategyVersion?      @relation(fields: [strategyVersionId], references: [id])
+  etfs            BacktestRunEtf[]
+  dailyRecords    BacktestDailyRecord[]
+  orders          BacktestOrder[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("backtest_run")
+}
+
+/// 回测关联的 ETF 与处理优先级
+model BacktestRunEtf {
+  backtestRunId String
+  etfCode       String
+  priority      Int
+
+  backtestRun BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@id([backtestRunId, etfCode])
+  @@map("backtest_run_etf")
+}
+
+/// 每日账户快照
+model BacktestDailyRecord {
+  id            String  @id @default(cuid())
+  backtestRunId String
+  date          Int
+  cash          Float
+  marketValue   Float
+  totalAssets   Float
+  realizedPnl   Float
+  unrealizedPnl Float
+  fees          Float
+  dailyReturn   Float?
+  drawdown      Float?
+
+  backtestRun BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@unique([backtestRunId, date])
+  @@index([backtestRunId, date])
+  @@map("backtest_daily_record")
+}
+
+/// 订单意图与成交结果
+model BacktestOrder {
+  id                String  @id @default(cuid())
+  backtestRunId     String
+  date              Int
+  etfCode           String
+  side              String
+  requestedQuantity Float
+  executedQuantity  Int
+  price             Float
+  amount            Float
+  fee               Float
+  status            String
+  reason            String?
+  strategyReason    String?
+  realizedPnl       Float?
+
+  backtestRun BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@index([backtestRunId, date])
+  @@index([backtestRunId, etfCode])
+  @@map("backtest_order")
+}

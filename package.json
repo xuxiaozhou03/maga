@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:generate": "prisma generate",
     "db:push": "prisma db push"
   },
@@ -14,21 +17,23 @@
     "schema": "services/prisma/schema.prisma"
   },
   "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "dayjs": "^1.11.23",
     "next": "16.4.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "dayjs": "^1.11.23",
-    "@prisma/client": "^5.20.0"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "prisma": "^5.20.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^18.0.8",
     "eslint": "^9",
     "eslint-config-next": "16.4.1",
+    "prisma": "^5.20.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.4"
   }
 }
