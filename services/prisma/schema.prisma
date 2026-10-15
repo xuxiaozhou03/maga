@@ -82,6 +82,8 @@ model StrategyVersion {
 model BacktestRun {
   id                String    @id @default(cuid())
   strategyVersionId String?
+  /// 仓库内策略的注册表 id（services/strategy/index.ts）；用于回测可复现追溯
+  strategyId        String?
   status            String
   startDate         Int
   endDate           Int
@@ -102,6 +104,7 @@ model BacktestRun {
 
   @@index([status])
   @@index([createdAt])
+  @@index([strategyId])
   @@map("backtest_run")
 }
 

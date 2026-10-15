@@ -24,6 +24,8 @@ export type SaveBacktestRunInput = {
   parameters: Record<string, unknown>;
   engineVersion: string;
   strategyVersionId?: string | null;
+  /** 仓库内策略的注册表 id。 */
+  strategyId?: string | null;
   /** 行情数据指纹，用于识别底层数据变化。 */
   dataFingerprint?: string | null;
   status?: BacktestRunStatus;
@@ -55,6 +57,7 @@ export async function saveBacktestRun(input: SaveBacktestRunInput): Promise<stri
     parameters,
     engineVersion,
     strategyVersionId = null,
+    strategyId = null,
     dataFingerprint = null,
     status = "completed",
     result,
@@ -70,6 +73,7 @@ export async function saveBacktestRun(input: SaveBacktestRunInput): Promise<stri
   const run = await prisma.backtestRun.create({
     data: {
       strategyVersionId,
+      strategyId,
       status,
       startDate: config.startDate,
       endDate: config.endDate,

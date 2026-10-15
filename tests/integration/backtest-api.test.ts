@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/services/prisma";
 import { GET as listStrategiesRoute } from "@/app/api/strategies/route";
 import { GET as listRunsRoute, POST as runBacktestRoute } from "@/app/api/backtests/route";
+import { GET as getRunRoute } from "@/app/api/backtests/[id]/route";
 import { deleteBacktestRun } from "@/services/repositories/backtest.repository";
 
 function postJson(body: unknown): Request {
@@ -19,6 +20,13 @@ const VALID = {
   endDate: 20241231,
   initialCash: 100_000,
 };
+
+function detailRequest(id: string): [Request, { params: Promise<{ id: string }> }] {
+  return [
+    new Request(`http://localhost/api/backtests/${id}`),
+    { params: Promise.resolve({ id }) },
+  ];
+}
 
 afterAll(async () => {
   await prisma.$disconnect();
@@ -112,5 +120,45 @@ describe("GET /api/backtests", () => {
 
     expect(response.status).toBe(200);
     expect(Array.isArray(body.runs)).toBe(true);
+  });
+});
+
+describe("GET /api/backtests/[id]", () => {
+  it("回测记录绑定策略标识，且详情指标可由明细重算", async () => {
+    const created = await (await runBacktestRoute(postJson(VALID))).json();
+
+    try {
+      const response = await getRunRoute(...detailRequest(created.runId));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.run.strategyId).toBe("buy-and-hold");
+      expect(body.run.status).toBe("completed");
+      expect(body.run.engineVersion).toBeTruthy();
+      expect(body.run.dataFingerprint).toMatch(/^[0-9a-f]{64}$/);
+      expect(body.config.initialCash).toBe(100_000);
+      expect(body.config.codes).toEqual(["510300.SH"]);
+      expect(body.parameters).toEqual({});
+      expect(body.etfs.map((item: { code: string }) => item.code)).toEqual(["510300.SH"]);
+
+      expect(body.dailyRecords).toHaveLength(created.tradingDays);
+      expect(body.orders).toHaveLength(created.orderCount);
+      // 指标由落库明细重算，应与运行时的结果一致
+      expect(body.metrics.finalTotalAssets).toBe(created.metrics.finalTotalAssets);
+      expect(body.metrics.totalReturn).toBe(created.metrics.totalReturn);
+      expect(body.metrics.maxDrawdown).toBe(created.metrics.maxDrawdown);
+      expect(body.metrics.totalFees).toBe(created.metrics.totalFees);
+
+      const list = await (await listRunsRoute()).json();
+      const listed = list.runs.find((item: { id: string }) => item.id === created.runId);
+      expect(listed.strategyId).toBe("buy-and-hold");
+    } finally {
+      await deleteBacktestRun(created.runId);
+    }
+  });
+
+  it("未知 id 返回 404", async () => {
+    const response = await getRunRoute(...detailRequest("does-not-exist"));
+    expect(response.status).toBe(404);
   });
 });

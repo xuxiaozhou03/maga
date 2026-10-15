@@ -172,6 +172,7 @@ export const POST = async (request: Request) => {
       config,
       parameters: mergedParams,
       engineVersion: ENGINE_VERSION,
+      strategyId,
       dataFingerprint,
       status: "completed",
       result,
@@ -197,6 +198,7 @@ export const POST = async (request: Request) => {
       config,
       parameters: mergedParams,
       engineVersion: ENGINE_VERSION,
+      strategyId,
       status: "failed",
       errorMessage: message,
       startedAt,
@@ -212,6 +214,7 @@ export const GET = async () => {
   return NextResponse.json({
     runs: runs.map((run) => ({
       id: run.id,
+      strategyId: run.strategyId,
       status: run.status,
       startDate: run.startDate,
       endDate: run.endDate,
