@@ -1,0 +1,41 @@
+// 量化回测系统 Prisma Schema
+// 模型：ETF、关联关系、持仓、日K、subscribeShare 原始快照、同步任务状态
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// ETF基础信息
+model Etf {
+  code          String @id
+  name          String
+  trackingIndex String
+  trackIndex    String
+  scale         Float
+
+  @@map("etf")
+}
+
+/// 日K线数据
+model Kline {
+  code          String
+  date          Int
+  open          Float
+  high          Float
+  low           Float
+  close         Float
+  volume        Float
+  amount        Float
+  change        Float
+  changePercent Float
+
+  @@id([code, date])
+  @@unique([code, date])
+  @@index([code, date])
+  @@map("kline")
+}
