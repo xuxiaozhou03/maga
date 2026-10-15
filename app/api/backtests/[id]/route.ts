@@ -1,18 +1,11 @@
 /**
  * 单次回测详情。
  *
- * 指标不单独落库，而是从存下来的每日记录与订单重算，避免结果表与明细不一致。
+ * 指标从存下来的每日记录与订单重算，不单独存表（见 services/backtest/summary.ts）。
  */
 
 import { NextResponse } from "next/server";
-import { computeMetrics } from "@/services/backtest/metrics/metrics";
-import type {
-  DailyRecord,
-  OrderRecord,
-  OrderSide,
-  OrderStatus,
-  RejectReason,
-} from "@/services/backtest/types";
+import { summarizeStoredRun } from "@/services/backtest/summary";
 import { getBacktestRun } from "@/services/repositories/backtest.repository";
 
 function safeParse<T>(value: string, fallback: T): T {
@@ -35,47 +28,10 @@ export const GET = async (
   }
 
   const { run, etfs, dailyRecords: storedDaily, orders: storedOrders } = stored;
-
-  const dailyRecords: DailyRecord[] = storedDaily.map((record) => ({
-    date: record.date,
-    cash: record.cash,
-    marketValue: record.marketValue,
-    totalAssets: record.totalAssets,
-    realizedPnl: record.realizedPnl,
-    unrealizedPnl: record.unrealizedPnl,
-    fees: record.fees,
-    dailyReturn: record.dailyReturn,
-    drawdown: record.drawdown,
-    positions: [],
-  }));
-
-  const orders: OrderRecord[] = storedOrders.map((order) => ({
-    date: order.date,
-    code: order.etfCode,
-    side: order.side as OrderSide,
-    requestedQuantity: order.requestedQuantity,
-    executedQuantity: order.executedQuantity,
-    price: order.price,
-    amount: order.amount,
-    fee: order.fee,
-    status: order.status as OrderStatus,
-    reason: (order.reason as RejectReason | null) ?? null,
-    strategyReason: order.strategyReason,
-    realizedPnl: order.realizedPnl,
-  }));
-
-  // 期末现金与市值取最后一条每日记录；没有记录时退回初始资金。
-  const last = dailyRecords[dailyRecords.length - 1];
-  const finalCash = last?.cash ?? run.initialCash;
-  const finalMarketValue = last?.marketValue ?? 0;
-
-  const metrics = computeMetrics({
+  const { dailyRecords, orders, metrics } = summarizeStoredRun({
     initialCash: run.initialCash,
-    dailyRecords,
-    orders,
-    finalCash,
-    finalMarketValue,
-    riskFreeRate: 0,
+    dailyRecords: storedDaily,
+    orders: storedOrders,
   });
 
   return NextResponse.json({

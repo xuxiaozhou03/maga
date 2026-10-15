@@ -48,6 +48,12 @@ export type KlineCoverage = {
   lastDate: Ymd | null;
 };
 
+export type KlineStats = {
+  count: number;
+  firstDate: Ymd | null;
+  lastDate: Ymd | null;
+};
+
 function assertCode(code: string): void {
   if (typeof code !== "string" || code.trim() === "") {
     throw new TypeError("kline.repository: code 不能为空");
@@ -153,6 +159,21 @@ export async function getKlineCoverage(code: string): Promise<KlineCoverage> {
 
   return {
     code,
+    count,
+    firstDate: first?.date ?? null,
+    lastDate: last?.date ?? null,
+  };
+}
+
+/** 全库行情概览：总条数与日期跨度。 */
+export async function getKlineStats(): Promise<KlineStats> {
+  const [count, first, last] = await Promise.all([
+    prisma.kline.count(),
+    prisma.kline.findFirst({ orderBy: { date: "asc" }, select: { date: true } }),
+    prisma.kline.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
+  ]);
+
+  return {
     count,
     firstDate: first?.date ?? null,
     lastDate: last?.date ?? null,

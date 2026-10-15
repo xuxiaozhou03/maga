@@ -21,6 +21,8 @@ export type RegisteredStrategy = {
   id: string;
   name: string;
   description?: string;
+  /** 策略声明的默认参数，供表单预填。 */
+  params: Record<string, unknown>;
   strategy: RunnableStrategy;
 };
 
@@ -40,6 +42,7 @@ function register(id: string, definition: unknown): void {
     id,
     name: strategy.name,
     description: strategy.description,
+    params: { ...((strategy.params as Record<string, unknown> | undefined) ?? {}) },
     strategy,
   });
 }

@@ -13,6 +13,7 @@ export const GET = async () => {
     id: item.id,
     name: item.name,
     description: item.description ?? null,
+    params: item.params,
   }));
 
   return NextResponse.json({ strategies });
