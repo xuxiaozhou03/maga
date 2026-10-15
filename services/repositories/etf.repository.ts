@@ -19,6 +19,8 @@ export type EtfSummary = {
   trackingIndex: string;
   trackIndex: string;
   scale: number;
+  /** 溢价率（百分数，0.02 表示 0.02%）。 */
+  premiumRate: number | null;
   /** 行情覆盖情况。 */
   barCount: number;
   firstDate: Ymd | null;
@@ -91,6 +93,7 @@ export async function listEtfSummaries(): Promise<EtfSummary[]> {
       trackingIndex: etf.trackingIndex,
       trackIndex: etf.trackIndex,
       scale: etf.scale,
+      premiumRate: etf.premiumRate ?? null,
       barCount: stats?._count._all ?? 0,
       firstDate: stats?._min.date ?? null,
       lastDate: stats?._max.date ?? null,

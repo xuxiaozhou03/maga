@@ -17,6 +17,8 @@ model Etf {
   trackingIndex String
   trackIndex    String
   scale         Float
+  /// 溢价率（百分数，例如 0.02 表示 0.02%）；上游可能为空
+  premiumRate   Float?
 
   @@map("etf")
 }

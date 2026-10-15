@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { formatCount, formatMoney, formatYi, formatYmdCompact } from "@/lib/format";
+import {
+  formatCount,
+  formatMoney,
+  formatPercentValue,
+  formatYi,
+  formatYmdCompact,
+} from "@/lib/format";
 import { listEtfSummaries } from "@/services/repositories/etf.repository";
 
 export const instant = false;
@@ -24,6 +30,7 @@ export default async function EtfsPage() {
               <th className="px-3 py-2 text-left font-medium">名称</th>
               <th className="px-3 py-2 text-left font-medium">跟踪指数</th>
               <th className="px-3 py-2 text-right font-medium">规模</th>
+              <th className="px-3 py-2 text-right font-medium">溢价率</th>
               <th className="px-3 py-2 text-left font-medium">数据区间</th>
               <th className="px-3 py-2 text-right font-medium">条数</th>
               <th className="px-3 py-2 text-right font-medium">最新收盘</th>
@@ -45,6 +52,7 @@ export default async function EtfsPage() {
                   {etf.trackingIndex || "—"}
                 </td>
                 <td className={`${cell} text-right`}>{formatYi(etf.scale)}</td>
+                <td className={`${cell} text-right`}>{formatPercentValue(etf.premiumRate)}</td>
                 <td className={`${cell} text-zinc-500 dark:text-zinc-400`}>
                   {formatYmdCompact(etf.firstDate)} ~ {formatYmdCompact(etf.lastDate)}
                 </td>

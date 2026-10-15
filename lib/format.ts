@@ -21,6 +21,15 @@ export function formatSignedPercent(value: number | null, digits = 2): string {
   return `${sign}${(value * 100).toFixed(digits)}%`;
 }
 
+/**
+ * 已经是百分数的数值（如溢价率 0.02 表示 0.02%），直接展示。
+ */
+export function formatPercentValue(value: number | null, digits = 2): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(digits)}%`;
+}
+
 export function formatNumber(value: number | null, digits = 2): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return value.toFixed(digits);

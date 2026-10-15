@@ -10,6 +10,7 @@ import {
   formatMoney,
   formatNumber,
   formatPercent,
+  formatPercentValue,
   formatSignedPercent,
   formatYi,
   formatYmdCompact,
@@ -62,6 +63,10 @@ export default async function EtfDetailPage({
           <div className="flex gap-1.5">
             <dt>规模</dt>
             <dd className="tabular-nums">{formatYi(etf.scale)}</dd>
+          </div>
+          <div className="flex gap-1.5">
+            <dt>溢价率</dt>
+            <dd className="tabular-nums">{formatPercentValue(etf.premiumRate)}</dd>
           </div>
         </dl>
       </div>
