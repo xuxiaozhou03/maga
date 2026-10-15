@@ -7,10 +7,24 @@
 
 import type { Etf } from "@prisma/client";
 import { prisma } from "@/services/prisma";
+import type { Ymd } from "@/lib/dates";
 
 export type EtfRow = Etf;
 
 export type EtfOrderBy = "code" | "scale";
+
+export type EtfSummary = {
+  code: string;
+  name: string;
+  trackingIndex: string;
+  trackIndex: string;
+  scale: number;
+  /** 行情覆盖情况。 */
+  barCount: number;
+  firstDate: Ymd | null;
+  lastDate: Ymd | null;
+  lastClose: number | null;
+};
 
 export type ListEtfsOptions = {
   orderBy?: EtfOrderBy;
@@ -39,4 +53,48 @@ export async function getEtf(code: string): Promise<EtfRow | null> {
 export async function listEtfCodes(): Promise<string[]> {
   const rows = await prisma.etf.findMany({ select: { code: true }, orderBy: { code: "asc" } });
   return rows.map((row) => row.code);
+}
+
+/**
+ * ETF 列表及其行情覆盖情况，按规模从大到小。
+ *
+ * 覆盖信息用一次 groupBy 聚合，最新收盘价按代码各取一条。
+ */
+export async function listEtfSummaries(): Promise<EtfSummary[]> {
+  const [etfs, grouped] = await Promise.all([
+    prisma.etf.findMany({ orderBy: { scale: "desc" } }),
+    prisma.kline.groupBy({
+      by: ["code"],
+      _min: { date: true },
+      _max: { date: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const coverage = new Map(grouped.map((item) => [item.code, item]));
+
+  const lastCloses = await Promise.all(
+    etfs.map((etf) =>
+      prisma.kline.findFirst({
+        where: { code: etf.code },
+        orderBy: { date: "desc" },
+        select: { close: true },
+      }),
+    ),
+  );
+
+  return etfs.map((etf, index) => {
+    const stats = coverage.get(etf.code);
+    return {
+      code: etf.code,
+      name: etf.name,
+      trackingIndex: etf.trackingIndex,
+      trackIndex: etf.trackIndex,
+      scale: etf.scale,
+      barCount: stats?._count._all ?? 0,
+      firstDate: stats?._min.date ?? null,
+      lastDate: stats?._max.date ?? null,
+      lastClose: lastCloses[index]?.close ?? null,
+    };
+  });
 }

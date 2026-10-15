@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PerformanceChart } from "@/components/charts/performance-chart";
+import { SeriesChart } from "@/components/charts/series-chart";
 import { RunStatusBadge } from "@/components/backtest-table";
 import { Stat, StatGrid, toneOf } from "@/components/stat";
 import {
@@ -137,11 +137,12 @@ export default async function BacktestDetailPage({
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold tracking-tight">资产与回撤</h2>
         <div className="rounded-md border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <PerformanceChart
-            initialCash={metrics.initialCash}
+          <SeriesChart
+            baseline={metrics.initialCash}
+            baselineLabel="初始"
             points={dailyRecords.map((record) => ({
               date: record.date,
-              totalAssets: record.totalAssets,
+              value: record.totalAssets,
               drawdown: record.drawdown,
             }))}
           />

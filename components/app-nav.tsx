@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "概览" },
+  { href: "/etfs", label: "ETF 行情" },
   { href: "/backtests", label: "回测记录" },
   { href: "/strategies", label: "策略" },
 ];

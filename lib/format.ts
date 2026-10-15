@@ -30,6 +30,21 @@ export function formatCount(value: number): string {
   return value.toLocaleString("zh-CN");
 }
 
+/** 金额按「亿」展示，用于规模等大数。 */
+export function formatYi(value: number | null, digits = 2): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${(value / 100_000_000).toFixed(digits)} 亿`;
+}
+
+/** 成交量/成交额等大数的紧凑展示。 */
+export function formatCompact(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("zh-CN", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function formatDateTime(value: Date | string | null): string {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;
