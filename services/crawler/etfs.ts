@@ -7,6 +7,25 @@ interface OriginalEtf {
   scale: number | null;
   trackingIndex: string | null;
   trackIndex: string | null;
+  /** 上游按字符串返回溢价率（百分数），例如 "0.02"、"-0.10"；也可能为 null。 */
+  premiumRate: string | number | null;
+}
+
+/**
+ * 解析上游溢价率。
+ *
+ * 单位为百分数（0.02 表示 0.02%），与 `changePercent` 口径一致；
+ * 上游为空或无法解析时返回 null。
+ */
+export function parsePremiumRate(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function fetchEtfs() {
@@ -37,6 +56,7 @@ async function fetchEtfs() {
       scale: item.scale ?? 0,
       trackingIndex: item.trackingIndex ?? "",
       trackIndex: item.trackIndex!,
+      premiumRate: parsePremiumRate(item.premiumRate),
     }))
     .filter(
       (etf) =>
