@@ -18,3 +18,4 @@ coverage/
 .next/
 
 .next
+packages/calc/data

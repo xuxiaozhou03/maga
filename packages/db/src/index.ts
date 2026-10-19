@@ -10,3 +10,5 @@ function getPrisma(): PrismaClient {
 
 export const prisma = getPrisma();
 export { Prisma };
+
+export type Kline = Prisma.KlineCreateInput;
