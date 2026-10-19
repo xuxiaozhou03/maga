@@ -1,42 +1,20 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-*.db
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
+node_modules/
+dist/
+coverage/
 *.tsbuildinfo
-next-env.d.ts
+
+# 环境变量
+.env
+.env.local
+
+# SQLite 数据库
+*.db
+*.db-journal
+
+# 系统文件
+.DS_Store
+
+# Next.js 构建产物
+.next/
+
+.next

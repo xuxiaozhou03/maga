@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 let _prisma: PrismaClient | undefined;
 
@@ -9,3 +9,4 @@ function getPrisma(): PrismaClient {
 }
 
 export const prisma = getPrisma();
+export { Prisma };

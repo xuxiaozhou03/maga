@@ -1,6 +1,5 @@
-import { Prisma } from "@prisma/client";
 import dayjs from "dayjs";
-import { prisma } from "../prisma";
+import { Prisma, prisma } from "@maga/db";
 
 export type Kline = Prisma.KlineCreateInput;
 

@@ -1,5 +1,4 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { prisma, Prisma } from "@maga/db";
 
 interface OriginalEtf {
   securityName: string;
@@ -70,7 +69,8 @@ async function fetchEtfs() {
           "NBI.GI",
           "SPSIBI.SPI",
           "SP5CSSUP.SPI",
-        ].includes(etf.trackIndex) || etf.code === "510300.SH",
+        ].includes(etf.trackIndex),
+      // || etf.code === "510300.SH",
     )
     .sort((a, b) => a.trackIndex?.localeCompare(b.trackIndex ?? "") ?? 0);
 
