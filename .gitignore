@@ -18,4 +18,4 @@ coverage/
 .next/
 
 .next
-packages/calc/data
+packages/crawler/data

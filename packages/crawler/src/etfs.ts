@@ -1,4 +1,5 @@
 import { prisma, Prisma } from "@maga/db";
+import { Task } from "./utils";
 
 interface OriginalEtf {
   securityName: string;
@@ -6,29 +7,14 @@ interface OriginalEtf {
   scale: number | null;
   trackingIndex: string | null;
   trackIndex: string | null;
-  /** 上游按字符串返回溢价率（百分数），例如 "0.02"、"-0.10"；也可能为 null。 */
   premiumRate: string | number | null;
 }
 
-/**
- * 解析上游溢价率。
- *
- * 单位为百分数（0.02 表示 0.02%），与 `changePercent` 口径一致；
- * 上游为空或无法解析时返回 null。
- */
-export function parsePremiumRate(value: unknown): number | null {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value !== "string") return null;
-
-  const trimmed = value.trim();
-  if (trimmed === "") return null;
-
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : null;
-}
+const whiteList = ["转债"];
+const blackList = ["短融", "债"];
 
 async function fetchEtfs() {
-  const response = await fetch(
+  const ret = await fetch(
     "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",
     {
       headers: {
@@ -44,53 +30,69 @@ async function fetchEtfs() {
       method: "GET",
     },
   );
-
-  const data = (await response.json()) as {
+  const res = (await ret.json()) as {
     data: { data: OriginalEtf[] };
   };
-  const list = data.data.data
-    .map<Prisma.EtfCreateInput>((item) => ({
-      code: item.securityCode,
-      name: item.securityName,
-      scale: item.scale ?? 0,
-      trackingIndex: item.trackingIndex ?? "",
-      trackIndex: item.trackIndex!,
-      premiumRate: parsePremiumRate(item.premiumRate),
-    }))
-    .filter(
-      (etf) =>
-        [
-          "NDX.GI",
-          "SPTR500N.SPI",
-          "NDXTMC.GI",
-          "SPX.GI",
-          "DJI.GI",
-          "750108.MI",
-          "NBI.GI",
-          "SPSIBI.SPI",
-          "SP5CSSUP.SPI",
-        ].includes(etf.trackIndex),
-      // || etf.code === "510300.SH",
-    )
-    .sort((a, b) => a.trackIndex?.localeCompare(b.trackIndex ?? "") ?? 0);
 
-  return list;
+  const map: Record<string, Prisma.EtfCreateInput> = {};
+
+  res.data.data
+    .filter((etf) => etf.scale && etf.scale > 300000000)
+    .filter(({ trackIndex, trackingIndex }) => {
+      if (!trackIndex || !trackingIndex) {
+        return false;
+      }
+
+      if (whiteList.find((key) => trackingIndex.includes(key))) {
+        return true;
+      }
+
+      if (blackList.find((key) => trackingIndex.includes(key))) {
+        return false;
+      }
+
+      return true;
+    })
+    .forEach((originEtf) => {
+      const etf = {
+        code: originEtf.securityCode,
+        name: originEtf.securityName,
+        scale: originEtf.scale ?? 0,
+        trackingIndex: originEtf.trackingIndex ?? "",
+        trackIndex: originEtf.trackIndex!,
+        premiumRate: originEtf.premiumRate
+          ? parseFloat(originEtf.premiumRate + "")
+          : null,
+      };
+      if (!map[etf.trackIndex] || map[etf.trackIndex].scale < etf.scale) {
+        map[etf.trackIndex] = etf;
+      }
+    });
+
+  return Object.values(map).sort((a, b) => (a.scale > b.scale ? -1 : 1));
 }
 
-export const runEtfTask = async () => {
-  console.log("Fetching ETF data...");
-  const etfs = await fetchEtfs();
-  await prisma.$transaction(async (tx) => {
-    for (const etf of etfs) {
-      await tx.etf.upsert({
+export const etfTask: Task<Prisma.EtfCreateInput[]> = {
+  name: "etfs",
+  fetch: fetchEtfs,
+  save: async (etfs) => {
+    await prisma.$transaction(async (tx) => {
+      for (const etf of etfs) {
+        await tx.etf.upsert({
+          where: {
+            code: etf.code,
+          },
+          create: etf,
+          update: etf,
+        });
+      }
+      await tx.etf.deleteMany({
         where: {
-          code: etf.code,
+          code: {
+            notIn: etfs.map((etf) => etf.code),
+          },
         },
-        create: etf,
-        update: etf,
       });
-    }
-  });
-  console.log(`Fetched and stored ${etfs.length} ETFs.`);
-  return etfs;
+    });
+  },
 };

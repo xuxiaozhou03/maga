@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
-import { Prisma, prisma } from "@maga/db";
-
-export type Kline = Prisma.KlineCreateInput;
+import { Kline, prisma } from "@maga/db";
+import { Task } from "./utils";
 
 const fetchPageKline = async (code: string, begin: number, count = 1000) => {
   const res = await fetch(
@@ -58,7 +57,7 @@ const fetchPageKline = async (code: string, begin: number, count = 1000) => {
   return items;
 };
 
-const fetchKline = async (code: string) => {
+const fetchKline = (code: string) => async () => {
   const count = 1000;
   const today = +dayjs().format("YYYYMMDD");
   let begin = today;
@@ -87,25 +86,25 @@ const fetchKline = async (code: string) => {
   return kline;
 };
 
-export const runKlineTask = async (code: string) => {
-  console.log(`Fetching Kline data for ETF: ${code}`);
-  const klines = await fetchKline(code);
-  console.log(
-    `Kline data for ETF: ${code} has been updated. Total records: ${klines.length}`,
-  );
-  await prisma.$transaction(async (tx) => {
-    for (const kline of klines) {
-      await tx.kline.upsert({
-        where: {
-          code_date: {
-            code: kline.code,
-            date: kline.date,
-          },
-        },
-        create: kline,
-        update: kline,
+export const getKlineTask = (code: string): Task<Kline[]> => {
+  return {
+    name: `${code}_kline`,
+    fetch: fetchKline(code),
+    async save(klines) {
+      await prisma.$transaction(async (tx) => {
+        for (const kline of klines) {
+          await tx.kline.upsert({
+            where: {
+              code_date: {
+                code: kline.code,
+                date: kline.date,
+              },
+            },
+            create: kline,
+            update: kline,
+          });
+        }
       });
-    }
-  });
-  console.log("done");
+    },
+  };
 };

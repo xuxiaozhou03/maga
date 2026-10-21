@@ -12,3 +12,4 @@ export const prisma = getPrisma();
 export { Prisma };
 
 export type Kline = Prisma.KlineCreateInput;
+export type Etf = Prisma.EtfCreateInput;

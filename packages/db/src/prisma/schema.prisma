@@ -42,3 +42,16 @@ model Kline {
   @@index([code, date])
   @@map("kline")
 }
+
+/// 任务
+model Task {
+  name      String   @id
+  // 任务状态： success/failed
+  status    String
+  // 信息
+  message   String?
+  // 完成时间
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("task")
+}
