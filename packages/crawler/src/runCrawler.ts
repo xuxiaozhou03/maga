@@ -2,7 +2,6 @@ import { prisma } from "@maga/db";
 import { etfTask } from "./etfs";
 import { runTask } from "./utils";
 import { getKlineTask } from "./kline";
-import { getCalcTask } from "./calc";
 
 export const runCrawler = async () => {
   console.log("Starting the crawler...");
@@ -17,7 +16,6 @@ export const runCrawler = async () => {
   });
   for (const etf of etfs) {
     await runTask(getKlineTask(etf.code));
-    await runTask(getCalcTask(etf.code));
   }
   console.log("Crawler finished.");
 };
