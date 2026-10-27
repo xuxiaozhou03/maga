@@ -1,11 +1,235 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <meta name="description" content="ETF 行情列表与日 K 线走势" />
+    <title>ETF 行情中心</title>
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <h1>11</h1>
+    <div id="app" v-cloak>
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="ETF 行情中心首页">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M4 17.5 9 12l3.2 3.2L20 6.5" />
+              <path d="M15.5 6.5H20V11" />
+            </svg>
+          </span>
+          <span>
+            <strong>ETF 行情中心</strong>
+            <small>MARKET OVERVIEW</small>
+          </span>
+        </a>
+        <div class="header-status">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span>行情数据</span>
+        </div>
+      </header>
+
+      <main class="page-shell">
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">ETF MARKET</p>
+            <h1>发现值得关注的<br /><em>ETF 标的</em></h1>
+            <p class="hero-description">
+              按规模筛选主流跨境 ETF，查看跟踪指数、溢价表现与历史日 K 走势。
+            </p>
+          </div>
+          <div class="hero-orbit" aria-hidden="true">
+            <div class="orbit-ring orbit-ring-one"></div>
+            <div class="orbit-ring orbit-ring-two"></div>
+            <div class="orbit-core">
+              <span>ETF</span>
+              <small>DAILY DATA</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="summary-grid" aria-label="ETF 数据概览">
+          <article class="summary-card summary-card-accent">
+            <div class="summary-icon" aria-hidden="true">◎</div>
+            <div>
+              <span>ETF 数量</span>
+              <strong>{{ etfs.length }}</strong>
+              <small>当前覆盖标的</small>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">¥</div>
+            <div>
+              <span>合计规模</span>
+              <strong>{{ formatScale(totalScale) }}</strong>
+              <small>按接口返回规模汇总</small>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">↗</div>
+            <div>
+              <span>正溢价</span>
+              <strong>{{ positivePremiumCount }}</strong>
+              <small>只 ETF 当前溢价为正</small>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">#</div>
+            <div>
+              <span>最大规模</span>
+              <strong class="summary-code">{{ largestEtf?.code || '--' }}</strong>
+              <small>{{ largestEtf?.name || '等待数据' }}</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel etf-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">ETF LIST</p>
+              <h2>全部 ETF</h2>
+              <p class="section-description">点击任意标的查看日 K 线与成交数据</p>
+            </div>
+            <div class="table-tools">
+              <label class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5"></circle>
+                  <path d="m16 16 4 4"></path>
+                </svg>
+                <input
+                  v-model.trim="query"
+                  type="search"
+                  placeholder="搜索代码、名称或指数"
+                  aria-label="搜索 ETF"
+                />
+                <button
+                  v-if="query"
+                  class="clear-search"
+                  type="button"
+                  aria-label="清空搜索"
+                  @click="query = ''"
+                >
+                  ×
+                </button>
+              </label>
+              <button class="icon-button" type="button" title="刷新数据" aria-label="刷新数据" @click="loadEtfs" :disabled="loading">
+                <svg viewBox="0 0 24 24" :class="{ spinning: loading }" aria-hidden="true">
+                  <path d="M20 7v5h-5"></path>
+                  <path d="M18.5 16a8 8 0 1 1 .8-7.2L20 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="error" class="state-card state-error" role="alert">
+            <div class="state-icon">!</div>
+            <div>
+              <strong>ETF 数据加载失败</strong>
+              <p>{{ error }}</p>
+            </div>
+            <button class="secondary-button" type="button" @click="loadEtfs">重新加载</button>
+          </div>
+
+          <div v-else-if="loading && !etfs.length" class="table-skeleton" aria-label="正在加载 ETF 数据">
+            <div v-for="row in 7" :key="row" class="skeleton-row">
+              <span v-for="cell in 6" :key="cell"></span>
+            </div>
+          </div>
+
+          <div v-else class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>
+                    <button class="sort-button" type="button" @click="setSort('code')">
+                      代码<span class="sort-mark">{{ sortMark('code') }}</span>
+                    </button>
+                  </th>
+                  <th>
+                    <button class="sort-button" type="button" @click="setSort('name')">
+                      ETF 名称<span class="sort-mark">{{ sortMark('name') }}</span>
+                    </button>
+                  </th>
+                  <th>
+                    <button class="sort-button" type="button" @click="setSort('trackingIndex')">
+                      跟踪指数<span class="sort-mark">{{ sortMark('trackingIndex') }}</span>
+                    </button>
+                  </th>
+                  <th class="technical-column">
+                    <button class="sort-button" type="button" @click="setSort('trackIndex')">
+                      指数代码<span class="sort-mark">{{ sortMark('trackIndex') }}</span>
+                    </button>
+                  </th>
+                  <th class="number-column">
+                    <button class="sort-button" type="button" @click="setSort('scale')">
+                      基金规模<span class="sort-mark">{{ sortMark('scale') }}</span>
+                    </button>
+                  </th>
+                  <th class="number-column">
+                    <button class="sort-button" type="button" @click="setSort('premiumRate')">
+                      溢价率<span class="sort-mark">{{ sortMark('premiumRate') }}</span>
+                    </button>
+                  </th>
+                  <th class="action-column"><span class="sr-only">查看 K 线</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="etf in filteredEtfs"
+                  :key="etf.code"
+                  class="etf-row"
+                  tabindex="0"
+                  @click="openEtf(etf)"
+                  @keydown.enter="openEtf(etf)"
+                >
+                  <td>
+                    <span class="code-badge">{{ etf.code }}</span>
+                  </td>
+                  <td>
+                    <div class="etf-name">{{ etf.name }}</div>
+                    <div class="mobile-index">{{ etf.trackingIndex || '未分类指数' }}</div>
+                  </td>
+                  <td>
+                    <span class="index-pill">{{ etf.trackingIndex || '--' }}</span>
+                  </td>
+                  <td class="technical-column">
+                    <code class="index-code">{{ etf.trackIndex || '--' }}</code>
+                  </td>
+                  <td class="number-column scale-value">{{ formatScale(etf.scale) }}</td>
+                  <td class="number-column">
+                    <span class="premium-value" :class="premiumClass(etf.premiumRate)">
+                      {{ formatPercent(etf.premiumRate) }}
+                    </span>
+                  </td>
+                  <td class="action-column">
+                    <span class="row-arrow" aria-hidden="true">↗</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div v-if="!filteredEtfs.length" class="empty-state">
+              <div class="empty-graphic" aria-hidden="true">⌕</div>
+              <strong>{{ etfs.length ? '没有匹配的 ETF' : '暂无 ETF 数据' }}</strong>
+              <p v-if="etfs.length">试试搜索其他代码、名称或跟踪指数。</p>
+              <button v-else class="secondary-button" type="button" @click="loadEtfs">重新加载</button>
+            </div>
+          </div>
+
+          <footer class="panel-footer">
+            <span>显示 {{ filteredEtfs.length }} / {{ etfs.length }} 只 ETF</span>
+            <span>数据接口 <code>/api/etfs</code></span>
+            <span v-if="lastUpdated">更新于 {{ lastUpdated }}</span>
+          </footer>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <span>ETF 行情中心</span>
+        <span>数据仅供研究参考，不构成投资建议</span>
+      </footer>
+    </div>
+
+    <script src="/vendor/vue.global.prod.js"></script>
+    <script src="/app.js"></script>
   </body>
 </html>

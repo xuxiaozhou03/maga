@@ -16,7 +16,24 @@ app.get("/api/:code/kline", async (c) => {
   const klines = await fetchKline(code);
   return c.json(klines);
 });
-app.get("*", serveStatic({ path: "./static/index.html" }));
+
+// Keep the browser dependencies local so the pages also work without a CDN.
+app.get(
+  "/vendor/vue.global.prod.js",
+  serveStatic({ path: "./node_modules/vue/dist/vue.global.prod.js" }),
+);
+app.get(
+  "/vendor/klinecharts.min.js",
+  serveStatic({ path: "./node_modules/klinecharts/dist/klinecharts.min.js" }),
+);
+
+app.get(
+  "*",
+  serveStatic({
+    root: "./static",
+    rewriteRequestPath: (path) => (path === "/" ? "/index.html" : path),
+  }),
+);
 
 serve(
   {

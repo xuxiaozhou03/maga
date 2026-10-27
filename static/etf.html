@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ETF 日 K 线走势与成交数据" />
+    <title>ETF K 线详情</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="detail-page">
+    <div id="app" v-cloak>
+      <header class="site-header detail-header">
+        <a class="brand" href="/" aria-label="返回 ETF 行情中心">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M4 17.5 9 12l3.2 3.2L20 6.5" />
+              <path d="M15.5 6.5H20V11" />
+            </svg>
+          </span>
+          <span>
+            <strong>ETF 行情中心</strong>
+            <small>MARKET OVERVIEW</small>
+          </span>
+        </a>
+        <a class="back-link" href="/">
+          <span aria-hidden="true">←</span>
+          返回列表
+        </a>
+      </header>
+
+      <main class="page-shell detail-shell">
+        <div v-if="!code" class="state-card state-error page-state" role="alert">
+          <div class="state-icon">!</div>
+          <div>
+            <strong>缺少 ETF 代码</strong>
+            <p>请从 ETF 列表选择一个标的，或在地址中附加 <code>?code=513050.SH</code>。</p>
+          </div>
+          <a class="secondary-button" href="/">返回列表</a>
+        </div>
+
+        <template v-else>
+          <section class="detail-hero">
+            <div>
+              <div class="detail-breadcrumb">
+                <a href="/">ETF 列表</a>
+                <span>/</span>
+                <span>{{ code }}</span>
+              </div>
+              <div class="detail-title-row">
+                <div>
+                  <p class="eyebrow">ETF DAILY CHART</p>
+                  <h1>{{ etfInfo?.name || queryName || code }}</h1>
+                </div>
+                <span class="code-badge code-badge-large">{{ code }}</span>
+              </div>
+              <div class="detail-meta">
+                <span v-if="etfInfo?.trackingIndex">跟踪 {{ etfInfo.trackingIndex }}</span>
+                <span v-if="etfInfo?.trackingIndex">·</span>
+                <span>{{ etfInfo?.trackIndex || '日线行情' }}</span>
+                <span>·</span>
+                <span>前复权</span>
+              </div>
+            </div>
+
+            <div v-if="latest" class="latest-quote">
+              <span>最新收盘</span>
+              <strong :class="changeClass(latest.changePercent)">{{ formatPrice(latest.close) }}</strong>
+              <span class="quote-change" :class="changeClass(latest.changePercent)">
+                {{ signed(latest.change) }} / {{ formatPercent(latest.changePercent) }}
+              </span>
+              <small>{{ formatDate(latest.date) }}</small>
+            </div>
+          </section>
+
+          <div v-if="error" class="state-card state-error page-state" role="alert">
+            <div class="state-icon">!</div>
+            <div>
+              <strong>K 线数据加载失败</strong>
+              <p>{{ error }}</p>
+            </div>
+            <button class="secondary-button" type="button" @click="loadData">重新加载</button>
+          </div>
+
+          <template v-else>
+            <section class="metric-grid" aria-label="K 线区间统计">
+              <article class="metric-card">
+                <span>区间涨跌</span>
+                <strong :class="changeClass(periodChange)">{{ formatPercent(periodChange) }}</strong>
+                <small>{{ rangeLabel }}表现</small>
+              </article>
+              <article class="metric-card">
+                <span>区间最高</span>
+                <strong>{{ formatPrice(periodHigh) }}</strong>
+                <small>{{ formatDate(periodHighDate) }}</small>
+              </article>
+              <article class="metric-card">
+                <span>区间最低</span>
+                <strong>{{ formatPrice(periodLow) }}</strong>
+                <small>{{ formatDate(periodLowDate) }}</small>
+              </article>
+              <article class="metric-card">
+                <span>区间成交额</span>
+                <strong>{{ formatCompactAmount(periodAmount) }}</strong>
+                <small>{{ visibleKlines.length }} 个交易日</small>
+              </article>
+            </section>
+
+            <section class="panel chart-panel">
+              <div class="chart-heading">
+                <div>
+                  <p class="section-kicker">PRICE ACTION</p>
+                  <h2>日 K 走势</h2>
+                </div>
+                <div class="chart-actions">
+                  <div class="range-tabs" role="group" aria-label="选择 K 线区间">
+                    <button
+                      v-for="item in ranges"
+                      :key="item.key"
+                      type="button"
+                      :class="{ active: range === item.key }"
+                      @click="range = item.key"
+                    >
+                      {{ item.label }}
+                    </button>
+                  </div>
+                  <button class="text-button" type="button" @click="showLatest">
+                    回到最新
+                  </button>
+                </div>
+              </div>
+
+              <div class="chart-stats" v-if="latest">
+                <span>开 <b>{{ formatPrice(latest.open) }}</b></span>
+                <span>高 <b class="up-text">{{ formatPrice(latest.high) }}</b></span>
+                <span>低 <b class="down-text">{{ formatPrice(latest.low) }}</b></span>
+                <span>收 <b>{{ formatPrice(latest.close) }}</b></span>
+                <span>量 <b>{{ formatCompactNumber(latest.volume) }}</b></span>
+                <span>额 <b>{{ formatCompactAmount(latest.amount) }}</b></span>
+              </div>
+
+              <div class="chart-wrap">
+                <div v-if="loading" class="chart-loading">
+                  <div class="chart-loading-pulse"></div>
+                  <span>正在加载 K 线数据...</span>
+                </div>
+                <div id="kline-chart" ref="chartElement" class="kline-chart"></div>
+                <div v-if="!loading && !klines.length" class="chart-empty">
+                  <strong>暂无 K 线数据</strong>
+                  <p>该标的当前没有可展示的日线数据。</p>
+                </div>
+              </div>
+              <div class="chart-hint">
+                <span>滚轮缩放</span><span>拖动平移</span><span>十字光标查看 OHLC</span>
+              </div>
+            </section>
+
+            <section class="panel records-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="section-kicker">RECENT SESSIONS</p>
+                  <h2>近期行情</h2>
+                  <p class="section-description">最近 30 个交易日的开高低收与成交量</p>
+                </div>
+                <span class="record-count">{{ recentKlines.length }} 条</span>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table records-table">
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <th class="number-column">开盘</th>
+                      <th class="number-column">最高</th>
+                      <th class="number-column">最低</th>
+                      <th class="number-column">收盘</th>
+                      <th class="number-column">涨跌幅</th>
+                      <th class="number-column">成交量</th>
+                      <th class="number-column">成交额</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in recentKlines" :key="item.date">
+                      <td class="date-cell">{{ formatDate(item.date) }}</td>
+                      <td class="number-column">{{ formatPrice(item.open) }}</td>
+                      <td class="number-column up-text">{{ formatPrice(item.high) }}</td>
+                      <td class="number-column down-text">{{ formatPrice(item.low) }}</td>
+                      <td class="number-column strong-cell">{{ formatPrice(item.close) }}</td>
+                      <td class="number-column" :class="changeClass(item.changePercent)">
+                        {{ formatPercent(item.changePercent) }}
+                      </td>
+                      <td class="number-column">{{ formatCompactNumber(item.volume) }}</td>
+                      <td class="number-column">{{ formatCompactAmount(item.amount) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <footer class="panel-footer">
+                <span>数据接口 <code>/api/{{ code }}/kline</code></span>
+                <span v-if="lastUpdated">更新于 {{ lastUpdated }}</span>
+              </footer>
+            </section>
+          </template>
+        </template>
+      </main>
+
+      <footer class="site-footer">
+        <span>ETF 行情中心</span>
+        <span>数据仅供研究参考，不构成投资建议</span>
+      </footer>
+    </div>
+
+    <script src="/vendor/vue.global.prod.js"></script>
+    <script src="/vendor/klinecharts.min.js"></script>
+    <script src="/etf.js"></script>
+  </body>
+</html>
