@@ -1,21 +1,28 @@
+# dev
+.yarn/
+!.yarn/releases
+.vscode/*
+!.vscode/launch.json
+!.vscode/*.code-snippets
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/shelf
+
+# deps
 node_modules/
-dist/
-coverage/
-*.tsbuildinfo
 
-# 环境变量
+# env
 .env
-.env.local
+.env.production
 
-# SQLite 数据库
-*.db
-*.db-journal
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# 系统文件
+# misc
 .DS_Store
-
-# Next.js 构建产物
-.next/
-
-.next
-packages/crawler/data
