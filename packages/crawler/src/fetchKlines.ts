@@ -1,17 +1,6 @@
+import { Kline, prisma } from "@maga/db";
 import dayjs from "dayjs";
-
-export type Kline = {
-  code: string;
-  date: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  amount: number;
-  change: number;
-  changePercent: number;
-};
+import { Task } from "./utils";
 
 const fetchPageKline = async (code: string, begin: number, count = 1000) => {
   const res = await fetch(
@@ -68,7 +57,7 @@ const fetchPageKline = async (code: string, begin: number, count = 1000) => {
   return items;
 };
 
-export const fetchKline = async (code: string) => {
+const fetchKline = async (code: string) => {
   const count = 1000;
   const today = +dayjs().format("YYYYMMDD");
   let begin = today;
@@ -96,3 +85,24 @@ export const fetchKline = async (code: string) => {
   }
   return kline;
 };
+
+export const getKlineTask = (code: string): Task<Kline[]> => ({
+  name: "klines",
+  fetch: () => fetchKline(code),
+  save: async (data) => {
+    await prisma.$transaction(async (tx) => {
+      for (const kline of data) {
+        await tx.kline.upsert({
+          where: {
+            code_date: {
+              code: kline.code,
+              date: kline.date,
+            },
+          },
+          create: kline,
+          update: kline,
+        });
+      }
+    });
+  },
+});

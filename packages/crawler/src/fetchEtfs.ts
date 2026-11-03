@@ -1,3 +1,6 @@
+import { Etf, prisma } from "@maga/db";
+import { Task } from "./utils";
+
 interface OriginalEtf {
   securityName: string;
   securityCode: string;
@@ -7,7 +10,7 @@ interface OriginalEtf {
   premiumRate: string | number | null;
 }
 
-export async function fetchEtfs() {
+async function fetchEtfs() {
   const ret = await fetch(
     "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",
     {
@@ -29,9 +32,8 @@ export async function fetchEtfs() {
   };
 
   return res.data.data
-
     .map((originEtf) => {
-      const etf = {
+      const etf: Etf = {
         code: originEtf.securityCode,
         name: originEtf.securityName,
         scale: originEtf.scale ?? 0,
@@ -57,3 +59,33 @@ export async function fetchEtfs() {
       ].includes(etf.trackIndex);
     });
 }
+
+export const etfsTask: Task<Etf[]> = {
+  name: "etfs",
+  fetch: fetchEtfs,
+  save: async (data) => {
+    await prisma.$transaction(async (tx) => {
+      for (const etf of data) {
+        await tx.etf.upsert({
+          where: { code: etf.code },
+          create: etf,
+          update: etf,
+        });
+      }
+      await tx.etf.deleteMany({
+        where: {
+          code: {
+            notIn: data.map((etf) => etf.code),
+          },
+        },
+      });
+      await tx.kline.deleteMany({
+        where: {
+          code: {
+            notIn: data.map((etf) => etf.code),
+          },
+        },
+      });
+    });
+  },
+};

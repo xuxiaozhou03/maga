@@ -7,6 +7,13 @@ settings:
 importers:
 
   packages/crawler:
+    dependencies:
+      '@maga/db':
+        specifier: workspace:*
+        version: link:../db
+      dayjs:
+        specifier: ^1.11.9
+        version: 1.11.23
     devDependencies:
       '@types/node':
         specifier: ^26.1.1
@@ -342,6 +349,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  dayjs@1.11.23:
+    resolution: {integrity: sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==}
+
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
     engines: {node: '>=18'}
@@ -550,6 +560,8 @@ snapshots:
 
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
+
+  dayjs@1.11.23: {}
 
   esbuild@0.28.2:
     optionalDependencies:
