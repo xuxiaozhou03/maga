@@ -1,5 +1,5 @@
 import { Etf, prisma } from "@maga/db";
-import { Task } from "./utils";
+import { Task } from "../utils";
 
 interface OriginalEtf {
   securityName: string;
@@ -31,33 +31,39 @@ async function fetchEtfs() {
     data: { data: OriginalEtf[] };
   };
 
-  return res.data.data
-    .map((originEtf) => {
-      const etf: Etf = {
-        code: originEtf.securityCode,
-        name: originEtf.securityName,
-        scale: originEtf.scale ?? 0,
-        trackingIndex: originEtf.trackingIndex ?? "",
-        trackIndex: originEtf.trackIndex!,
-        premiumRate: originEtf.premiumRate
-          ? parseFloat(originEtf.premiumRate + "")
-          : null,
+  const map: Record<string, Etf> = {};
+
+  res.data.data.forEach(
+    ({
+      securityCode,
+      securityName,
+      scale,
+      trackingIndex,
+      trackIndex,
+      premiumRate,
+    }) => {
+      if (
+        !securityCode ||
+        !securityName ||
+        !trackIndex ||
+        ["短融", "债"].find((item) => securityName.includes(item)) ||
+        // 规模小于 3 亿过滤掉
+        scale! < 300000000 ||
+        (map[trackIndex] && map[trackIndex].scale > scale!)
+      ) {
+        return;
+      }
+      map[trackIndex] = {
+        code: securityCode,
+        name: securityName,
+        scale: scale ?? 0,
+        trackingIndex: trackingIndex ?? "",
+        trackIndex: trackIndex!,
+        premiumRate: premiumRate ? parseFloat(premiumRate + "") : null,
       };
-      return etf;
-    })
-    .filter((etf) => {
-      return [
-        "NDX.GI",
-        "SPTR500N.SPI",
-        "NDXTMC.GI",
-        "SPX.GI",
-        "DJI.GI",
-        "750108.MI",
-        "NBI.GI",
-        "SPSIBI.SPI",
-        "SP5CSSUP.SPI",
-      ].includes(etf.trackIndex);
-    });
+    },
+  );
+  return Object.values(map).sort((a, b) => b.scale - a.scale);
 }
 
 export const etfsTask: Task<Etf[]> = {

@@ -1,6 +1,6 @@
 import { Kline, prisma } from "@maga/db";
 import dayjs from "dayjs";
-import { Task } from "./utils";
+import { Task } from "../utils";
 
 const fetchPageKline = async (code: string, begin: number, count = 1000) => {
   const res = await fetch(

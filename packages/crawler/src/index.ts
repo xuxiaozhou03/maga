@@ -1,23 +1,37 @@
 import { prisma } from "@maga/db";
-import { etfsTask } from "./fetchEtfs";
-import { runTask } from "./utils";
-import { getKlineTask } from "./fetchKlines";
+import { runTask, runTasks } from "./utils";
+import { etfsTask } from "./tasks/etfs";
+import { getKlineTask } from "./tasks/klines";
+import { getEtfStatisticsTask } from "./tasks/etf-statistics";
+import { etfsStatisticsTask } from "./tasks/etfs-statistics";
 
-const runCrawler = async () => {
+const runCrawler = async (force: boolean = false) => {
   console.log("Starting the crawler...");
+
+  if (force) {
+    await prisma.task.deleteMany();
+  }
 
   await runTask(etfsTask);
 
   const etfs = await prisma.etf.findMany({
     orderBy: { scale: "desc" },
+    take: 0,
   });
-  console.log("Retrieved ETFs:", etfs.length);
-  for (const etf of etfs) {
-    await runTask(getKlineTask(etf.code));
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Sleep for 1 second between tasks
-  }
+
+  const klinesTasks = etfs.map((etf) => getKlineTask(etf.code));
+  await runTasks(klinesTasks);
+
+  const etfStatisticsTasks = etfs.map((etf) => getEtfStatisticsTask(etf.code));
+  await runTasks(etfStatisticsTasks);
+
+  await runTask(etfsStatisticsTask);
+
+  await prisma.$disconnect();
+
+  console.log("Crawler finished.");
 };
 
 if (require.main === module) {
-  runCrawler();
+  process.argv.includes("--force") ? runCrawler(true) : runCrawler();
 }

@@ -1,4 +1,4 @@
-import { prisma, Prisma } from "@maga/db";
+import { prisma } from "@maga/db";
 
 export interface Task<T = any> {
   name: string;
@@ -6,48 +6,47 @@ export interface Task<T = any> {
   save: (data: T) => Promise<void>;
 }
 
-const updateTask = async (partialTask: Partial<Prisma.TaskCreateInput>) => {
-  const task = {
-    ...partialTask,
-  } as Prisma.TaskCreateInput;
-  await prisma.task.upsert({
-    where: { name: task.name },
-    create: task,
-    update: task,
-  });
-};
-
 export const runTask = async <T = any>(task: Task<T>) => {
   console.log("run ", task.name);
+
+  const existingTask = await prisma.task.findUnique({
+    where: { name: task.name },
+  });
+
+  if (existingTask && existingTask.status === "success") {
+    console.log("skip ", task.name);
+    return;
+  }
 
   let data;
 
   try {
     data = await task.fetch();
   } catch (e) {
-    await updateTask({
-      name: task.name,
-      status: "failed",
-      message: "请求接口失败",
-    });
-    return;
-  }
-
-  if (!data || (Array.isArray(data) && data.length === 0)) {
-    await updateTask({
-      name: task.name,
-      status: "failed",
-      message: "返回数据为空",
+    console.log("error", task.name, e);
+    await prisma.task.upsert({
+      where: { name: task.name },
+      create: { name: task.name, status: "failed" },
+      update: { status: "failed" },
     });
     return;
   }
 
   await task.save(data);
-  await updateTask({
-    name: task.name,
-    status: "success",
-    message: null,
+  await prisma.task.upsert({
+    where: { name: task.name },
+    create: { name: task.name, status: "success" },
+    update: { status: "success" },
   });
 
   console.log("done", task.name);
+};
+
+export const runTasks = async (tasks: Task[]) => {
+  console.log("run tasks", tasks.map((task) => task.name).join(", "));
+  for (const task of tasks) {
+    await runTask(task);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Sleep for 1 second between tasks
+  }
+  console.log("done tasks", tasks.map((task) => task.name).join(", "));
 };
