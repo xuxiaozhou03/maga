@@ -2,8 +2,7 @@ import { prisma } from "@maga/db";
 import { runTask, runTasks } from "./utils";
 import { etfsTask } from "./tasks/etfs";
 import { getKlineTask } from "./tasks/klines";
-import { getEtfStatisticsTask } from "./tasks/etf-statistics";
-import { etfsStatisticsTask } from "./tasks/etfs-statistics";
+import { getIndexValuationTasks } from "./tasks/valuation";
 
 const runCrawler = async (force: boolean = false) => {
   console.log("Starting the crawler...");
@@ -16,18 +15,14 @@ const runCrawler = async (force: boolean = false) => {
 
   const etfs = await prisma.etf.findMany({
     orderBy: { scale: "desc" },
-    take: 0,
+    take: 1,
   });
 
-  const klinesTasks = etfs.map((etf) => getKlineTask(etf.code));
+  const klinesTasks = etfs.flatMap((etf) => [
+    getKlineTask(etf.code),
+    ...getIndexValuationTasks(etf.trackIndex),
+  ]);
   await runTasks(klinesTasks);
-
-  const etfStatisticsTasks = etfs.map((etf) => getEtfStatisticsTask(etf.code));
-  await runTasks(etfStatisticsTasks);
-
-  await runTask(etfsStatisticsTask);
-
-  await prisma.$disconnect();
 
   console.log("Crawler finished.");
 };

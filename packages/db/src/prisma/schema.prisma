@@ -43,6 +43,20 @@ model Kline {
     @@map("kline")
 }
 
+/// 日K线数据
+model Valuation {
+    code    String
+    type    String
+    date    Int
+    value   Float
+    percent Float
+    peg     Float?
+
+    @@id([code, type, date])
+    @@index([code, type, date])
+    @@map("valuation")
+}
+
 /// 任务
 model Task {
     name   String @id

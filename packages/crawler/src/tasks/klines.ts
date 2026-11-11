@@ -87,7 +87,7 @@ const fetchKline = async (code: string) => {
 };
 
 export const getKlineTask = (code: string): Task<Kline[]> => ({
-  name: "klines",
+  name: `${code}-klines`,
   fetch: () => fetchKline(code),
   save: async (data) => {
     await prisma.$transaction(async (tx) => {

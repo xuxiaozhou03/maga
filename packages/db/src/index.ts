@@ -13,3 +13,4 @@ export { Prisma };
 
 export type Kline = Prisma.KlineCreateInput;
 export type Etf = Prisma.EtfCreateInput;
+export type Valuation = Prisma.ValuationCreateInput;

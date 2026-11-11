@@ -10,6 +10,18 @@ interface OriginalEtf {
   premiumRate: string | number | null;
 }
 
+export const magaCodes = [
+  "NDX.GI",
+  "SPTR500N.SPI",
+  "NDXTMC.GI",
+  "SPX.GI",
+  "DJI.GI",
+  "750108.MI",
+  "NBI.GI",
+  "SPSIBI.SPI",
+  "SP5CSSUP.SPI",
+];
+
 async function fetchEtfs() {
   const ret = await fetch(
     "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",
@@ -32,7 +44,6 @@ async function fetchEtfs() {
   };
 
   const map: Record<string, Etf> = {};
-
   res.data.data.forEach(
     ({
       securityCode,
@@ -70,6 +81,7 @@ export const etfsTask: Task<Etf[]> = {
   name: "etfs",
   fetch: fetchEtfs,
   save: async (data) => {
+    console.log(`Saving ${data.length} ETFs to the database...`);
     await prisma.$transaction(async (tx) => {
       for (const etf of data) {
         await tx.etf.upsert({
