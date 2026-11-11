@@ -1,4 +1,4 @@
-import { Etf, prisma } from "@maga/db";
+import { Etf, prisma } from "@/services/db";
 import { Task } from "../utils";
 
 interface OriginalEtf {

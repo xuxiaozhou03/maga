@@ -46,6 +46,7 @@ model Kline {
 /// 日K线数据
 model Valuation {
     code    String
+    // "PE", "PB", "PS", "DID"
     type    String
     date    Int
     value   Float

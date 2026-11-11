@@ -1,4 +1,4 @@
-import { Kline, prisma } from "@maga/db";
+import { Kline, prisma } from "@/services/db";
 import { Task } from "../utils";
 
 const getEtfStatistics = (klines: Kline[]) => {

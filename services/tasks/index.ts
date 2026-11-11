@@ -1,10 +1,10 @@
-import { prisma } from "@maga/db";
 import { runTask, runTasks } from "./utils";
 import { etfsTask } from "./crawler/etfs";
 import { getKlineTask } from "./crawler/klines";
 import { getIndexValuationTasks } from "./crawler/valuation";
+import { prisma } from "../db";
 
-const runCrawler = async (force: boolean = false) => {
+export const run = async (force: boolean = false) => {
   console.log("Starting the crawler...");
 
   if (force) {
@@ -26,7 +26,3 @@ const runCrawler = async (force: boolean = false) => {
 
   console.log("Crawler finished.");
 };
-
-if (require.main === module) {
-  process.argv.includes("--force") ? runCrawler(true) : runCrawler();
-}

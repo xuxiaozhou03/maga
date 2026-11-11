@@ -1,4 +1,4 @@
-import { prisma, Valuation } from "@maga/db";
+import { Valuation, prisma } from "@/services/db";
 import { Task } from "../utils";
 
 const valuationTypes = ["PE", "PB", "PS", "DID"] as const;
