@@ -1,8 +1,8 @@
 import { prisma } from "@maga/db";
 import { runTask, runTasks } from "./utils";
-import { etfsTask } from "./tasks/etfs";
-import { getKlineTask } from "./tasks/klines";
-import { getIndexValuationTasks } from "./tasks/valuation";
+import { etfsTask } from "./crawler/etfs";
+import { getKlineTask } from "./crawler/klines";
+import { getIndexValuationTasks } from "./crawler/valuation";
 
 const runCrawler = async (force: boolean = false) => {
   console.log("Starting the crawler...");

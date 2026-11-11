@@ -1,11 +1,11 @@
 {
-  "name": "@maga/crawler",
+  "name": "@maga/tasks",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "crawler": "tsx src/index.ts",
-    "crawler:force": "tsx src/index.ts --force"
+    "tasks": "tsx src/index.ts",
+    "tasks:force": "tsx src/index.ts --force"
   },
   "keywords": [],
   "author": "",
