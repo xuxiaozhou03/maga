@@ -1,7 +1,8 @@
 import { prisma, runTask, runTasks } from "@maga/db";
 import { etfsTask } from "./etfs";
-import { getKlineTask } from "./klines";
-import { getIndexValuationTasks } from "./valuation";
+import { getKlineTask } from "./etf/klines";
+import { getIndexValuationTasks } from "./index/valuation";
+import { getIndexDistributionTask } from "./index/distribution";
 
 export const run = async (force: boolean = false) => {
   console.log("Starting the crawler...");
@@ -20,6 +21,7 @@ export const run = async (force: boolean = false) => {
   const klinesTasks = etfs.flatMap((etf) => [
     getKlineTask(etf.code),
     ...getIndexValuationTasks(etf.trackIndex),
+    getIndexDistributionTask(etf.trackIndex),
   ]);
   await runTasks(klinesTasks);
 
