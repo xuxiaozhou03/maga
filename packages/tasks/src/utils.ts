@@ -1,4 +1,4 @@
-import { prisma } from "../../db";
+import { prisma } from "@maga/db";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TaskData = any;

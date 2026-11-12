@@ -1,4 +1,4 @@
-import { prisma } from "@/packages/db";
+import { prisma } from "@maga/db";
 import { runTask, runTasks } from "../utils";
 import { etfsTask } from "./etfs";
 import { getKlineTask } from "./klines";
