@@ -1,5 +1,4 @@
-import { prisma } from "@maga/db";
-import { runTask, runTasks } from "../utils";
+import { prisma, runTask, runTasks } from "@maga/db";
 import { etfsTask } from "./etfs";
 import { getKlineTask } from "./klines";
 import { getIndexValuationTasks } from "./valuation";

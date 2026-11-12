@@ -1,5 +1,5 @@
 import { Etf, prisma } from "@maga/db";
-import { Task } from "../utils";
+import { Task } from "../../db/src/utils";
 
 interface OriginalEtf {
   securityName: string;

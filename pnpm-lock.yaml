@@ -6,6 +6,25 @@ settings:
 
 importers:
 
+  packages/crawler:
+    dependencies:
+      '@maga/db':
+        specifier: workspace:*
+        version: link:../db
+      dayjs:
+        specifier: ^1.11.9
+        version: 1.11.23
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.6.6
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.15
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   packages/db:
     dependencies:
       '@prisma/client':
@@ -22,7 +41,7 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/tasks:
+  packages/statistics:
     dependencies:
       '@maga/db':
         specifier: workspace:*

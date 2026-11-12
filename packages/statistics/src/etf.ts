@@ -1,5 +1,4 @@
-import { Kline, prisma } from "@maga/db";
-import { Task } from "../utils";
+import { Kline, prisma, Task } from "@maga/db";
 
 const getEtfStatistics = (klines: Kline[]) => {
   // upDays	上涨天数
