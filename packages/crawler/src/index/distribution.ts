@@ -1,8 +1,10 @@
-import { Task } from "@maga/db";
+import { Distribution, prisma, Task } from "@maga/db";
 
-async function fetchIndustryDistribution(securityCode: string): Promise<any> {
+async function fetchIndustryDistribution(
+  securityCode: string,
+): Promise<Distribution[]> {
   const ret = await fetch(
-    `https://hongsehuojian.com/fundex-quote/security/component/industryDistribution?securityCode=${securityCode}&industryLevel=4&ts=${Date.now()}`,
+    `https://hongsehuojian.com/fundex-quote/security/component/industryDistribution?securityCode=${securityCode}&industryLevel=3&ts=${Date.now()}`,
     {
       headers: {
         accept: "application/json, text/plain, */*",
@@ -20,20 +22,43 @@ async function fetchIndustryDistribution(securityCode: string): Promise<any> {
   );
   const res = (await ret.json()) as {
     code: "200";
-    data: any;
+    data: {
+      resultMap: {
+        最新: Array<{
+          industryName: string;
+          weight: number;
+        }>;
+      };
+    };
   };
 
   if (res.code !== "200") {
-    return null;
+    return [];
   }
 
-  return res.data;
+  return res.data.resultMap["最新"].map<Distribution>((item) => {
+    return {
+      code: securityCode,
+      weight: item.weight,
+      industryName: item.industryName,
+    };
+  });
 }
 
-export const getIndexDistributionTask = (securityCode: string): Task<any> => ({
+export const getIndexDistributionTask = (
+  securityCode: string,
+): Task<Distribution[]> => ({
   name: `index-distribution-${securityCode}`,
   fetch: async () => fetchIndustryDistribution(securityCode),
   save: async (data) => {
-    console.log(data);
+    await prisma.$transaction(async (ctx) => {
+      await ctx.distribution.deleteMany({
+        where: {
+          code: securityCode,
+        },
+      });
+
+      await ctx.distribution.createMany({ data });
+    });
   },
 });

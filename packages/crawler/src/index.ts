@@ -11,7 +11,7 @@ export const run = async (force: boolean = false) => {
     await prisma.task.deleteMany();
   }
 
-  await runTask(etfsTask);
+  // await runTask(etfsTask);
 
   const etfs = await prisma.etf.findMany({
     orderBy: { scale: "desc" },
@@ -19,8 +19,8 @@ export const run = async (force: boolean = false) => {
   });
 
   const klinesTasks = etfs.flatMap((etf) => [
-    getKlineTask(etf.code),
-    ...getIndexValuationTasks(etf.trackIndex),
+    // getKlineTask(etf.code),
+    // ...getIndexValuationTasks(etf.trackIndex),
     getIndexDistributionTask(etf.trackIndex),
   ]);
   await runTasks(klinesTasks);

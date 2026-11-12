@@ -43,7 +43,7 @@ model Kline {
     @@map("kline")
 }
 
-/// 日K线数据
+/// 估值
 model Valuation {
     code    String
     // "PE", "PB", "PS", "DID"
@@ -56,6 +56,17 @@ model Valuation {
     @@id([code, type, date])
     @@index([code, type, date])
     @@map("valuation")
+}
+
+/// 行业分布 
+model Distribution {
+    code            String
+    industryName    String
+    weight   Float
+
+    @@id([code,industryName])
+    @@index([code, industryName])
+    @@map("distribution")
 }
 
 /// 任务
