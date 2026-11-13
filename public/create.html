@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>新建回测 · ETF Quant Lab</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">QF</span>
+          <span class="brand-copy">
+            <strong>ETF Quant Lab</strong>
+            <span>A 股 ETF 策略研究与回测</span>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="btn" href="index.html">
+            <i data-lucide="arrow-left"></i>返回工作台
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="page-intro">
+        <div>
+          <p class="eyebrow">New Backtest</p>
+          <h1>配置并运行策略</h1>
+          <p class="subtitle">
+            策略按交易日收盘价成交，并计入佣金、整手约束与 T+1 可卖规则。
+          </p>
+        </div>
+      </section>
+
+      <div class="form-layout">
+        <form class="form-panel" id="backtestForm">
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="strategy">策略</label>
+              <select id="strategy"></select>
+            </div>
+            <div class="form-field full" id="params"></div>
+            <div class="form-field full">
+              <label for="codes">ETF 代码</label>
+              <input id="codes" value="510300" placeholder="多个代码用逗号分隔" />
+            </div>
+            <div class="form-field">
+              <label for="startDate">开始日期</label>
+              <input id="startDate" inputmode="numeric" value="20240101" />
+            </div>
+            <div class="form-field">
+              <label for="endDate">结束日期</label>
+              <input id="endDate" inputmode="numeric" />
+            </div>
+            <div class="form-field full">
+              <label for="initialCash">初始资金</label>
+              <input id="initialCash" type="number" min="1" step="10000" value="1000000" />
+            </div>
+          </div>
+
+          <div class="progress-panel" id="progressPanel">
+            <div class="progress-title">
+              <span id="progressStatus">准备运行</span>
+              <strong id="progressPct">0%</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-meta">
+              <span id="progressDate">等待首个交易日</span>
+              <span id="progressEquity">-</span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <a class="btn" href="index.html">取消</a>
+            <button class="btn btn-primary" id="submitBtn" type="submit">
+              <i data-lucide="play"></i>执行回测
+            </button>
+          </div>
+        </form>
+
+        <aside class="side-note">
+          <p class="eyebrow">Execution</p>
+          <h3>运行规则</h3>
+          <ul>
+            <li>信号仅使用当日及历史数据。</li>
+            <li>买卖均按当日收盘价计算滑点。</li>
+            <li>佣金万分之 2.5，单笔最低 5 元。</li>
+            <li>持仓按 100 份整数倍调整。</li>
+            <li>T 日买入份额在 T+1 日可卖。</li>
+          </ul>
+          <div class="progress-panel is-visible" style="margin-top: 18px">
+            <h3 id="strategyTitle">策略参数</h3>
+            <p class="muted" id="strategyDescription" style="margin-bottom: 0">
+              正在载入策略信息
+            </p>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+      let strategyMetas = [];
+      let activeStream = null;
+
+      const strategySelect = document.getElementById("strategy");
+      const paramsElement = document.getElementById("params");
+      const endDateInput = document.getElementById("endDate");
+      const today = new Date();
+      endDateInput.value = [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2, "0"),
+        String(today.getDate()).padStart(2, "0"),
+      ].join("");
+
+      function currentStrategy() {
+        return strategyMetas.find((strategy) => strategy.key === strategySelect.value);
+      }
+
+      function renderParams() {
+        const strategy = currentStrategy();
+        document.getElementById("strategyTitle").textContent =
+          strategy?.name || "策略参数";
+        document.getElementById("strategyDescription").textContent =
+          strategy?.description || "";
+        paramsElement.innerHTML = Object.entries(strategy?.paramsSchema || {})
+          .map(
+            ([key, schema]) => `
+              <div class="form-field">
+                <label for="param-${escapeHtml(key)}">${escapeHtml(key)}</label>
+                <input
+                  id="param-${escapeHtml(key)}"
+                  data-param="${escapeHtml(key)}"
+                  type="${schema.type === "number" ? "number" : "text"}"
+                  value="${escapeHtml(schema.default ?? "")}"
+                  step="any"
+                />
+              </div>`,
+          )
+          .join("");
+        refreshIcons();
+      }
+
+      async function loadStrategies() {
+        try {
+          strategyMetas = await api("/strategies");
+          strategySelect.innerHTML = strategyMetas
+            .map(
+              (strategy) =>
+                `<option value="${escapeHtml(strategy.key)}">${escapeHtml(strategy.name)}</option>`,
+            )
+            .join("");
+          renderParams();
+        } catch (error) {
+          toast(`策略载入失败：${error.message}`, "error");
+        }
+      }
+
+      function showProgress(payload) {
+        const pct = Math.max(0, Math.min(100, Math.round((payload.pct || 0) * 100)));
+        document.getElementById("progressPanel").classList.add("is-visible");
+        document.getElementById("progressStatus").textContent = "回测运行中";
+        document.getElementById("progressPct").textContent = `${pct}%`;
+        document.getElementById("progressBar").style.width = `${pct}%`;
+        document.getElementById("progressDate").textContent = payload.date
+          ? `交易日 ${fmtDate(payload.date)}`
+          : "处理中";
+        document.getElementById("progressEquity").textContent =
+          payload.equity == null ? "-" : `权益 ¥${fmtMoney(payload.equity)}`;
+      }
+
+      async function submitBacktest(event) {
+        event.preventDefault();
+        if (activeStream) activeStream.close();
+        const button = document.getElementById("submitBtn");
+        setBusy(button, true, "提交中");
+        document.getElementById("progressPanel").classList.add("is-visible");
+        document.getElementById("progressStatus").textContent = "正在创建回测";
+        document.getElementById("progressPct").textContent = "0%";
+        document.getElementById("progressBar").style.width = "0%";
+
+        const params = {};
+        document.querySelectorAll("[data-param]").forEach((input) => {
+          params[input.dataset.param] =
+            input.type === "number" ? Number(input.value) : input.value;
+        });
+
+        try {
+          const run = await api("/backtests", {
+            method: "POST",
+            body: JSON.stringify({
+              strategyKey: strategySelect.value,
+              params,
+              codes: document
+                .getElementById("codes")
+                .value.split(",")
+                .map((code) => code.trim())
+                .filter(Boolean),
+              startDate: Number(document.getElementById("startDate").value),
+              endDate: Number(endDateInput.value),
+              initialCash: Number(document.getElementById("initialCash").value),
+            }),
+          });
+
+          const stream = new EventSource(`${API_BASE}/backtests/${run.id}/stream`);
+          activeStream = stream;
+          stream.addEventListener("progress", (event) => {
+            showProgress(JSON.parse(event.data));
+          });
+          stream.addEventListener("done", () => {
+            stream.close();
+            activeStream = null;
+            document.getElementById("progressStatus").textContent = "回测完成";
+            document.getElementById("progressPct").textContent = "100%";
+            document.getElementById("progressBar").style.width = "100%";
+            window.setTimeout(() => {
+              location.href = `detail.html?id=${encodeURIComponent(run.id)}`;
+            }, 350);
+          });
+          stream.addEventListener("error", (event) => {
+            if (!event.data) return;
+            stream.close();
+            activeStream = null;
+            setBusy(button, false);
+            let message = "回测失败";
+            try {
+              message = JSON.parse(event.data).message || message;
+            } catch {
+              // Keep the generic message.
+            }
+            document.getElementById("progressStatus").textContent = message;
+            document.getElementById("progressBar").style.width = "100%";
+            document.getElementById("progressBar").style.background = "var(--danger)";
+            toast(message, "error");
+          });
+        } catch (error) {
+          setBusy(button, false);
+          toast(`提交失败：${error.message}`, "error");
+        }
+      }
+
+      strategySelect.addEventListener("change", renderParams);
+      document.getElementById("backtestForm").addEventListener("submit", submitBacktest);
+      loadStrategies().finally(refreshIcons);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>回测详情 · ETF Quant Lab</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">QF</span>
+          <span class="brand-copy">
+            <strong>ETF Quant Lab</strong>
+            <span>A 股 ETF 策略研究与回测</span>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="btn" href="index.html">
+            <i data-lucide="arrow-left"></i>返回工作台
+          </a>
+          <a class="btn btn-primary" href="create.html">
+            <i data-lucide="plus"></i>新建回测
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="page-intro">
+        <div>
+          <p class="eyebrow">Backtest Detail</p>
+          <h1 id="pageTitle">回测详情</h1>
+          <div class="run-meta" id="runMeta">正在读取运行记录</div>
+        </div>
+        <div id="runStatus"></div>
+      </section>
+
+      <section class="detail-summary" id="summary"></section>
+      <p class="error-text" id="runError"></p>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Equity</p>
+            <h2>组合资金曲线</h2>
+          </div>
+        </div>
+        <div class="chart-panel" id="chart"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Daily Ledger</p>
+            <h2>每日权益</h2>
+          </div>
+        </div>
+        <div id="daily"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Fills</p>
+            <h2>成交明细</h2>
+          </div>
+        </div>
+        <div id="trades"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Comparisons</p>
+            <h2>同策略历史回测</h2>
+          </div>
+        </div>
+        <div id="sameStrategy"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+      let chart = null;
+      let currentRun = null;
+
+      const metric = (label, value, className = "") =>
+        `<div class="detail-metric"><span>${escapeHtml(label)}</span><strong class="${className}">${value}</strong></div>`;
+
+      function renderSummary(run) {
+        document.getElementById("summary").innerHTML = [
+          metric("总收益", fmtPct(run.totalReturn), colorClass(run.totalReturn)),
+          metric("年化收益", fmtPct(run.annualReturn), colorClass(run.annualReturn)),
+          metric("最大回撤", fmtPct(run.maxDrawdown), "negative"),
+          metric("夏普比率", fmtNum(run.sharpe, 2)),
+          metric("胜率", fmtPct(run.winRate)),
+          metric("成交笔数", run.tradeCount ?? "-"),
+        ].join("");
+        document.getElementById("runStatus").innerHTML = statusPill(run.status);
+        document.getElementById("runMeta").innerHTML = [
+          `<span>策略 <strong>${escapeHtml(run.strategyKey)}</strong></span>`,
+          `<span>标的 <strong class="mono">${parseCodes(run.codes).map(escapeHtml).join(", ") || "-"}</strong></span>`,
+          `<span>区间 <strong>${fmtDate(run.startDate)} 至 ${fmtDate(run.endDate)}</strong></span>`,
+        ].join("");
+        document.getElementById("runError").textContent =
+          run.status === "failed" ? run.error || "回测失败" : "";
+      }
+
+      function connectProgress(id) {
+        const stream = new EventSource(`${API_BASE}/backtests/${id}/stream`);
+        const status = document.getElementById("runStatus");
+        status.innerHTML = statusPill("running");
+        stream.addEventListener("progress", (event) => {
+          const payload = JSON.parse(event.data);
+          status.innerHTML = `${statusPill("running")} <span class="muted">${Math.round(payload.pct * 100)}%</span>`;
+        });
+        stream.addEventListener("done", () => {
+          stream.close();
+          location.reload();
+        });
+        stream.addEventListener("error", (event) => {
+          if (!event.data) return;
+          stream.close();
+          location.reload();
+        });
+      }
+
+      async function loadDetail() {
+        const id = new URLSearchParams(location.search).get("id");
+        if (!id) {
+          document.getElementById("runMeta").textContent = "缺少回测 ID";
+          return;
+        }
+
+        try {
+          const run = await api(`/backtests/${encodeURIComponent(id)}`);
+          currentRun = run;
+          renderSummary(run);
+          document.title = `${run.strategyKey} · 回测详情`;
+          document.getElementById("pageTitle").textContent =
+            `回测 ${run.id.slice(0, 8)}`;
+
+          if (run.status === "running") {
+            connectProgress(run.id);
+            return;
+          }
+
+          const [dailies, fills] = await Promise.all([
+            api(`/backtests/${encodeURIComponent(id)}/daily`),
+            api(`/backtests/${encodeURIComponent(id)}/trades`),
+          ]);
+
+          const initialCash = dailies.length ? dailies[0].cash + 0 : undefined;
+          chart = equityChart(
+            document.getElementById("chart"),
+            dailies,
+            initialCash || 1_000_000,
+          );
+          if (!dailies.length) {
+            document.getElementById("chart").innerHTML = emptyState("暂无每日权益数据");
+          }
+
+          table(
+            document.getElementById("daily"),
+            ["日期", "组合权益", "现金", "持仓"],
+            dailies.map((daily) => [
+              fmtDate(daily.date),
+              `<span class="mono">${fmtMoney(daily.equity)}</span>`,
+              `<span class="mono">${fmtMoney(daily.cash)}</span>`,
+              Object.entries(daily.positions)
+                .filter(([, shares]) => shares !== 0)
+                .map(
+                  ([code, shares]) =>
+                    `<span class="mono">${escapeHtml(code)}:${shares}</span>`,
+                )
+                .join("<br />") || "-",
+            ]),
+            "暂无每日权益数据",
+          );
+
+          table(
+            document.getElementById("trades"),
+            ["日期", "代码", "方向", "份额", "成交价", "费用"],
+            fills.map((fill) => [
+              fmtDate(fill.date),
+              `<span class="mono">${escapeHtml(fill.code)}</span>`,
+              fill.side === "buy"
+                ? '<span class="positive">买入</span>'
+                : '<span class="negative">卖出</span>',
+              fill.shares,
+              fmtNum(fill.price, 3),
+              fmtNum(fill.fee, 2),
+            ]),
+            "该区间没有成交",
+          );
+
+          await loadComparisons(run);
+        } catch (error) {
+          document.getElementById("runMeta").textContent = `加载失败：${error.message}`;
+          document.getElementById("chart").innerHTML = emptyState("回测详情加载失败");
+        } finally {
+          refreshIcons();
+        }
+      }
+
+      async function loadComparisons(run) {
+        const element = document.getElementById("sameStrategy");
+        try {
+          const { rows } = await api(
+            `/backtests?strategyKey=${encodeURIComponent(run.strategyKey)}&limit=12`,
+          );
+          const others = rows.filter((row) => row.id !== run.id);
+          table(
+            element,
+            ["创建时间", "标的", "区间", "状态", "总收益", "年化", "最大回撤", ""],
+            others.map((row) => [
+              fmtDateTime(row.createdAt),
+              `<span class="mono">${parseCodes(row.codes).map(escapeHtml).join(", ") || "-"}</span>`,
+              `${fmtDate(row.startDate)} 至 ${fmtDate(row.endDate)}`,
+              statusPill(row.status),
+              `<span class="${colorClass(row.totalReturn)}">${fmtPct(row.totalReturn)}</span>`,
+              `<span class="${colorClass(row.annualReturn)}">${fmtPct(row.annualReturn)}</span>`,
+              `<span class="negative">${fmtPct(row.maxDrawdown)}</span>`,
+              `<a href="detail.html?id=${encodeURIComponent(row.id)}">查看</a>`,
+            ]),
+            "暂无其他同策略回测",
+          );
+        } catch (error) {
+          element.innerHTML = emptyState("同策略历史加载失败", error.message);
+        }
+      }
+
+      loadDetail();
+    </script>
+  </body>
+</html>

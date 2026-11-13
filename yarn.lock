@@ -285,7 +285,14 @@
   resolved "https://registry.yarnpkg.com/@typescript/typescript-win32-x64/-/typescript-win32-x64-7.0.2.tgz#cf3b7b0d6ce5635daca4c8e01c189cdcde47ec3c"
   integrity sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==
 
-dayjs@^1.11.9:
+"@yiliang114/trading-day@^3.3.1":
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/@yiliang114/trading-day/-/trading-day-3.3.1.tgz#c713a13974f6802c31451e37cf3ae69dd2e1fc80"
+  integrity sha512-UxAUBgu4D9WKYGZGtsIqn6Xh4Pft3rdkJguJPjWZszG3aYc3ehQbF+39iF++WWa2Szs+jlZXcuBw4cvW/PuurA==
+  dependencies:
+    dayjs "^1.11.7"
+
+dayjs@^1.11.7, dayjs@^1.11.9:
   version "1.11.23"
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.23.tgz#b0a363506dde5f36cf5075e42ebe8115165a8c79"
   integrity sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETF 量化回测</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">QF</span>
+          <span class="brand-copy">
+            <strong>ETF Quant Lab</strong>
+            <span>A 股 ETF 策略研究与回测</span>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <button class="btn" id="syncBtn" type="button">
+            <i data-lucide="refresh-cw"></i>同步数据
+          </button>
+          <a class="btn btn-primary" href="create.html">
+            <i data-lucide="plus"></i>新建回测
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="page-intro">
+        <div>
+          <p class="eyebrow">Research Dashboard</p>
+          <h1>回测工作台</h1>
+          <p class="subtitle">
+            汇总策略运行结果，检查 ETF 特征排序，并进入单次回测查看资金曲线与成交明细。
+          </p>
+        </div>
+        <div class="run-meta" id="dataStamp">数据状态读取中</div>
+      </section>
+
+      <section class="summary-strip" aria-label="回测概览">
+        <div class="summary-item">
+          <span>累计回测</span>
+          <strong id="totalRuns">-</strong>
+        </div>
+        <div class="summary-item">
+          <span>已完成</span>
+          <strong id="successRuns">-</strong>
+        </div>
+        <div class="summary-item">
+          <span>最近总收益</span>
+          <strong id="latestReturn">-</strong>
+        </div>
+        <div class="summary-item">
+          <span>平均夏普</span>
+          <strong id="averageSharpe">-</strong>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Runs</p>
+            <h2>回测历史</h2>
+          </div>
+          <a class="btn" href="create.html">
+            <i data-lucide="play"></i>运行策略
+          </a>
+        </div>
+        <div id="runList">
+          <div class="empty"><strong>正在载入回测记录</strong></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Cross Section</p>
+            <h2>ETF 特征排名</h2>
+          </div>
+        </div>
+        <div class="toolbar">
+          <label class="field">
+            日期
+            <input id="featureDate" inputmode="numeric" placeholder="最新" />
+          </label>
+          <label class="field">
+            特征
+            <select id="featureName">
+              <option value="ret_1m">ret_1m · 一月动量</option>
+              <option value="ret_1w">ret_1w · 一周动量</option>
+              <option value="ret_3m">ret_3m · 三月动量</option>
+              <option value="vol_20d">vol_20d · 20 日波动</option>
+              <option value="max_dd_60d">max_dd_60d · 60 日回撤</option>
+              <option value="ma_dev_20d">ma_dev_20d · 均线偏离</option>
+              <option value="turnover_20d">turnover_20d · 成交额</option>
+              <option value="val_percent">val_percent · 估值分位</option>
+              <option value="rank_ret_1m">rank_ret_1m · 动量排名</option>
+              <option value="rank_vol_20d">rank_vol_20d · 低波排名</option>
+              <option value="rank_val_percent">rank_val_percent · 低估排名</option>
+            </select>
+          </label>
+          <label class="field">
+            TopN
+            <input id="featureLimit" type="number" value="20" min="1" max="200" />
+          </label>
+          <button class="btn" id="featureBtn" type="button">
+            <i data-lucide="search"></i>查询
+          </button>
+        </div>
+        <div id="featureList">
+          <div class="empty"><strong>正在载入特征数据</strong></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+      let strategyNames = {};
+
+      async function loadRuns() {
+        const element = document.getElementById("runList");
+        try {
+          const [{ rows }, strategies] = await Promise.all([
+            api("/backtests?limit=100"),
+            api("/strategies"),
+          ]);
+          strategyNames = Object.fromEntries(
+            strategies.map((strategy) => [strategy.key, strategy.name]),
+          );
+          document.getElementById("totalRuns").textContent = rows.length;
+          const successful = rows.filter((row) => row.status === "success");
+          document.getElementById("successRuns").textContent = successful.length;
+
+          if (rows.length) {
+            const latest = rows[0];
+            const latestElement = document.getElementById("latestReturn");
+            latestElement.textContent = fmtPct(latest.totalReturn);
+            latestElement.className = colorClass(latest.totalReturn);
+            document.getElementById("dataStamp").textContent =
+              `最近运行 ${fmtDateTime(latest.createdAt)} · ${statusPill(latest.status)}`;
+          } else {
+            document.getElementById("dataStamp").textContent = "尚无运行记录";
+          }
+
+          const sharpeValues = successful
+            .map((row) => row.sharpe)
+            .filter((value) => value != null);
+          document.getElementById("averageSharpe").textContent = sharpeValues.length
+            ? fmtNum(
+                sharpeValues.reduce((total, value) => total + value, 0) /
+                  sharpeValues.length,
+                2,
+              )
+            : "-";
+
+          table(
+            element,
+            ["创建时间", "策略", "标的", "区间", "状态", "总收益", "年化", "最大回撤", "夏普", "成交", ""],
+            rows.map((row) => [
+              escapeHtml(fmtDateTime(row.createdAt)),
+              escapeHtml(strategyNames[row.strategyKey] || row.strategyKey),
+              `<span class="mono">${parseCodes(row.codes).map(escapeHtml).join(", ") || "-"}</span>`,
+              `${fmtDate(row.startDate)} 至 ${fmtDate(row.endDate)}`,
+              statusPill(row.status),
+              `<span class="${colorClass(row.totalReturn)}">${fmtPct(row.totalReturn)}</span>`,
+              `<span class="${colorClass(row.annualReturn)}">${fmtPct(row.annualReturn)}</span>`,
+              `<span class="negative">${fmtPct(row.maxDrawdown)}</span>`,
+              fmtNum(row.sharpe, 2),
+              row.tradeCount ?? "-",
+              `<a href="detail.html?id=${encodeURIComponent(row.id)}">查看</a>`,
+            ]),
+            "暂无回测记录",
+          );
+        } catch (error) {
+          element.innerHTML = emptyState("回测记录加载失败", error.message);
+        }
+      }
+
+      async function loadFeatures() {
+        const element = document.getElementById("featureList");
+        const name = document.getElementById("featureName").value;
+        const date = document.getElementById("featureDate").value.trim();
+        const limit = document.getElementById("featureLimit").value || 20;
+        const params = new URLSearchParams({ name, limit });
+        if (date) params.set("date", date);
+        try {
+          const response = await api(`/features?${params.toString()}`);
+          if (!response.date) {
+            element.innerHTML = emptyState("暂无特征数据");
+            return;
+          }
+          document.getElementById("featureDate").value = String(response.date);
+          table(
+            element,
+            ["#", "代码", "ETF 名称", "指标值"],
+            response.rows.map((row, index) => [
+              index + 1,
+              `<span class="mono">${escapeHtml(row.code)}</span>`,
+              escapeHtml(row.etfName || "-"),
+              fmtNum(row.value),
+            ]),
+            "该交易日无特征数据",
+          );
+        } catch (error) {
+          element.innerHTML = emptyState("特征数据加载失败", error.message);
+        }
+      }
+
+      document.getElementById("featureBtn").addEventListener("click", loadFeatures);
+      document.getElementById("featureName").addEventListener("change", loadFeatures);
+      document.getElementById("featureDate").addEventListener("change", loadFeatures);
+
+      document.getElementById("syncBtn").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        setBusy(button, true, "同步中");
+        try {
+          await api("/sync", { method: "POST", body: "{}" });
+          toast("数据同步完成", "success");
+          await Promise.all([loadRuns(), loadFeatures()]);
+        } catch (error) {
+          toast(`同步失败：${error.message}`, "error");
+        } finally {
+          setBusy(button, false);
+        }
+      });
+
+      Promise.all([loadRuns(), loadFeatures()]).finally(refreshIcons);
+    </script>
+  </body>
+</html>

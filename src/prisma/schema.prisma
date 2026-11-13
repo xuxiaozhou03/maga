@@ -71,9 +71,71 @@ model Distribution {
 
 /// 任务
 model Task {
-    name   String @id
+    name       String    @id
     // 任务状态： success/failed
-    status String
+    status     String
+    finishedAt DateTime?
+    error      String?
 
     @@map("task")
+}
+
+/// 回测运行记录
+model BacktestRun {
+    id           String   @id @default(cuid())
+    strategyKey  String
+    params       String
+    codes        String
+    startDate    Int
+    endDate      Int
+    status       String
+    error        String?
+    totalReturn  Float?
+    annualReturn Float?
+    maxDrawdown  Float?
+    sharpe       Float?
+    winRate      Float?
+    tradeCount   Int?
+    createdAt    DateTime @default(now())
+    finishedAt   DateTime?
+    dailies      BacktestDaily[]
+    trade        BacktestTrade?
+
+    @@map("backtest_run")
+}
+
+/// 回测每日权益
+model BacktestDaily {
+    runId     String
+    date      Int
+    equity    Float
+    cash      Float
+    positions String
+    run       BacktestRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+    @@id([runId, date])
+    @@index([runId, date])
+    @@map("backtest_daily")
+}
+
+/// 回测成交明细
+model BacktestTrade {
+    runId  String @id
+    trades String
+    run    BacktestRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+    @@map("backtest_trade")
+}
+
+/// 特征
+model Feature {
+    code  String
+    date  Int
+    name  String
+    value Float
+
+    @@id([code, name, date])
+    @@index([name, date, value])
+    @@index([code, name, date])
+    @@map("feature")
 }

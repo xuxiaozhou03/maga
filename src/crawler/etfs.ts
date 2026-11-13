@@ -104,6 +104,13 @@ export const etfsTask: Task<Etf[]> = {
           },
         },
       });
+      await tx.feature.deleteMany({
+        where: {
+          code: {
+            notIn: data.map((etf) => etf.code),
+          },
+        },
+      });
     });
   },
 };
