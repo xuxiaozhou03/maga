@@ -1,6 +1,11 @@
-import type { Context, Strategy } from "../engine/types.js";
+import type { Context, Strategy } from "../../engine/types.js";
 
 export default class MomentumRank implements Strategy {
+  static key = "momentum_rank";
+  static name = "动量排名轮动";
+  static description = "按 rank_ret_1m 取 TopN 等权";
+  static paramsSchema = { topN: { type: "number", default: 3 } };
+
   private topN = 3;
 
   initialize(params: Record<string, unknown>) {

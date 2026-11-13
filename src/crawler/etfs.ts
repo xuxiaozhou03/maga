@@ -1,4 +1,5 @@
-import { prisma, type Etf } from "../prisma/index.js";
+import type { Etf } from "@prisma/client";
+import { prisma } from "../db.js";
 import type { Task } from "../utils/runTask.js";
 
 interface OriginalEtf {

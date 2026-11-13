@@ -44,10 +44,24 @@ export interface Context {
   log(message: string): void;
 }
 
-export interface Strategy {
-  initialize?(params: Record<string, unknown>): void;
-  handleBar(context: Context): void;
-  onOrder?(fill: Fill): void;
+export abstract class Strategy {
+  /** 策略唯一标识（静态，由子类提供） */
+  static key: string;
+  static name: string;
+  static description: string;
+  static paramsSchema: Record<
+    string,
+    { type: string; default?: unknown; desc?: string }
+  >;
+
+  /** 初始化，子类可覆盖 */
+  initialize(_params: Record<string, unknown>): void {}
+
+  /** 每个交易日调用，子类必须实现 */
+  abstract handleBar(context: Context): void;
+
+  /** 成交回调，子类可覆盖 */
+  onOrder?(_fill: Fill): void;
 }
 
 export interface BacktestConfig {

@@ -1,4 +1,5 @@
-import { prisma, type Distribution } from "../../prisma/index.js";
+import type { Distribution } from "@prisma/client";
+import { prisma } from "../../db.js";
 import type { Task } from "../../utils/runTask.js";
 
 async function fetchIndustryDistribution(

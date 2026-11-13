@@ -1,5 +1,5 @@
-import { prisma } from "../prisma/index.js";
 import { createRequire } from "node:module";
+import { prisma } from "../db.js";
 
 const require = createRequire(import.meta.url);
 const { isTradingDay } = require("@yiliang114/trading-day") as {

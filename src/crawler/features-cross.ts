@@ -1,4 +1,4 @@
-import { prisma } from "../prisma/index.js";
+import { prisma } from "../db.js";
 
 export async function computeCrossSection(
   poolCodes: string[],

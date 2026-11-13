@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
-import { prisma, type Kline } from "../../prisma/index.js";
 import type { Task } from "../../utils/runTask.js";
+import type { Kline } from "@prisma/client";
+import { prisma } from "../../db.js";
 
 const fetchPageKline = async (code: string, begin: number, count = 1000) => {
   const res = await fetch(

@@ -1,7 +1,15 @@
-import type { Context, Strategy } from "../engine/types.js";
-import { SMA } from "./indicators.js";
+import { SMA } from "trading-signals";
+import type { Context, Strategy } from "../../engine/types.js";
 
 export default class MaCross implements Strategy {
+  static key = "ma_cross";
+  static name = "双均线";
+  static description = "金叉买入、死叉清仓（单标的）";
+  static paramsSchema = {
+    fast: { type: "number", default: 5 },
+    slow: { type: "number", default: 20 },
+  };
+
   private fast = 5;
   private slow = 20;
 

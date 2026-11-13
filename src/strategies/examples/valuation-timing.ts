@@ -1,6 +1,14 @@
-import type { Context, Strategy } from "../engine/types.js";
+import type { Context, Strategy } from "../../engine/types.js";
 
 export default class ValuationTiming implements Strategy {
+  static key = "valuation_timing";
+  static name = "估值分位择时";
+  static description = "PE 分位低买高卖（单标的）";
+  static paramsSchema = {
+    low: { type: "number", default: 0.3 },
+    high: { type: "number", default: 0.7 },
+  };
+
   private low = 0.3;
   private high = 0.7;
 

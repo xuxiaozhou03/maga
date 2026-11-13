@@ -1,5 +1,5 @@
 import { prisma } from "../db.js";
-import { registry } from "../strategies/index.js";
+import { registries } from "../strategies/index.js";
 import { buildContext } from "./context.js";
 import { computeMetrics } from "./metrics.js";
 import { emitProgress } from "./progress.js";
@@ -8,6 +8,7 @@ import type {
   BacktestConfig,
   Fill,
   RunBacktestInput,
+  Strategy,
   ValuationSnap,
 } from "./types.js";
 
@@ -38,13 +39,16 @@ export async function runBacktest(input: RunBacktestInput): Promise<string> {
         });
 
   try {
-    const meta = registry[input.strategyKey];
+    const meta = registries.find((m) => m.key === input.strategyKey);
     if (!meta) throw new Error(`未知策略: ${input.strategyKey}`);
     if (!input.codes?.length) throw new Error("codes 不能为空");
     if (input.startDate > input.endDate) {
       throw new Error("startDate 必须 <= endDate");
     }
-    if (!Number.isFinite(input.initialCash ?? 1) || (input.initialCash ?? 1) <= 0) {
+    if (
+      !Number.isFinite(input.initialCash ?? 1) ||
+      (input.initialCash ?? 1) <= 0
+    ) {
       throw new Error("initialCash 必须大于 0");
     }
 
@@ -143,7 +147,7 @@ export async function runBacktest(input: RunBacktestInput): Promise<string> {
       positions: Record<string, number>;
     }[] = [];
 
-    const strategy = new meta.createStrategy();
+    const strategy: Strategy = new meta();
     strategy.initialize?.(input.params ?? {});
 
     const executeFill = (fill: Fill) => {
@@ -207,7 +211,7 @@ export async function runBacktest(input: RunBacktestInput): Promise<string> {
           const price = closeOf(code, date);
           if (price <= 0) continue;
           const targetShares =
-            Math.floor(((equityBefore * (normalized[code] ?? 0)) / price) / 100) *
+            Math.floor((equityBefore * (normalized[code] ?? 0)) / price / 100) *
             100;
           const difference = targetShares - (positions[code] ?? 0);
           if (difference > 0) {
@@ -225,15 +229,17 @@ export async function runBacktest(input: RunBacktestInput): Promise<string> {
           0,
           (positions[order.code] ?? 0) - (boughtToday[order.code] ?? 0),
         );
-        const shares =
-          Math.floor(Math.min(order.shares, sellable) / 100) * 100;
+        const shares = Math.floor(Math.min(order.shares, sellable) / 100) * 100;
         if (shares <= 0) {
           logger(`卖出裁剪 ${order.code}`);
           continue;
         }
         const price = closeOf(order.code, date) * (1 - config.slippage);
         const gross = shares * price;
-        const fee = Math.max(config.minCommission, gross * config.commissionRate);
+        const fee = Math.max(
+          config.minCommission,
+          gross * config.commissionRate,
+        );
         cash += gross - fee;
         positions[order.code] -= shares;
         executeFill({

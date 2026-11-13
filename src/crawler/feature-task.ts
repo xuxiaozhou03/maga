@@ -1,7 +1,7 @@
 import type { Task } from "../utils/runTask.js";
-import { prisma } from "../prisma/index.js";
 import { computeSingleFeatures, SINGLE_FEATURES } from "./features.js";
 import { computeCrossSection } from "./features-cross.js";
+import { prisma } from "../db.js";
 
 type FeatureRow = { date: number; name: string; value: number };
 type RankRow = FeatureRow & { code: string };

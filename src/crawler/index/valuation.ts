@@ -1,4 +1,5 @@
-import { prisma, type Valuation } from "../../prisma/index.js";
+import type { Valuation } from "@prisma/client";
+import { prisma } from "../../db.js";
 import type { Task } from "../../utils/runTask.js";
 
 const valuationTypes = ["PE", "PB", "PS", "DID"] as const;
