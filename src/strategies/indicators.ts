@@ -1,5 +1,4 @@
-export const sma = (values: number[], length: number) =>
-  values.slice(-length).reduce((total, value) => total + value, 0) / length;
+export { SMA, EMA, RSI, MACD, BollingerBands, ATR } from "trading-signals";
 
 export const retN = (values: number[], length: number) =>
   values.length > length

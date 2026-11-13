@@ -348,6 +348,11 @@ prisma@^5.20.0:
   optionalDependencies:
     fsevents "2.3.3"
 
+trading-signals@^8.4.0:
+  version "8.4.0"
+  resolved "https://registry.yarnpkg.com/trading-signals/-/trading-signals-8.4.0.tgz#3c3a552a20930a533eae27f2c2b59fea8a76e11a"
+  integrity sha512-SVLZUQlET+4j+BApiM/pIBa6/XyOe+6OCBnXD06eaOLLB9pA4sQMSPB8QA52xIgCrBnfejI1o3JO/stX13TpBw==
+
 tsx@^4.23.0:
   version "4.23.15"
   resolved "https://registry.yarnpkg.com/tsx/-/tsx-4.23.15.tgz#f53901695685ad567fed0f08532f7782e631c251"

@@ -16,7 +16,8 @@
     "@prisma/client": "^5.20.0",
     "@yiliang114/trading-day": "^3.3.1",
     "dayjs": "^1.11.9",
-    "hono": "^4.13.16"
+    "hono": "^4.13.16",
+    "trading-signals": "^8.4.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
