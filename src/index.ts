@@ -6,6 +6,7 @@ import { strategiesRoute } from "./routes/strategies.js";
 import { backtestsRoute } from "./routes/backtests.js";
 import { syncRoute } from "./routes/sync.js";
 import { featuresRoute } from "./routes/features.js";
+import { etfsRoute } from "./routes/etfs.js";
 
 const app = new Hono();
 
@@ -22,6 +23,7 @@ app.route("/api/strategies", strategiesRoute);
 app.route("/api/backtests", backtestsRoute);
 app.route("/api/sync", syncRoute);
 app.route("/api/features", featuresRoute);
+app.route("/api/etfs", etfsRoute);
 
 app.get("/", (context) => context.redirect("/index.html"));
 app.use("/*", serveStatic({ root: "./public" }));

@@ -39,6 +39,14 @@ const fmtMoney = (value) =>
         maximumFractionDigits: 2,
       });
 
+const fmtCompact = (value, unit = "") => {
+  if (value == null || !Number.isFinite(Number(value))) return "-";
+  const number = Number(value);
+  if (Math.abs(number) >= 1e8) return `${(number / 1e8).toFixed(2)} 亿${unit}`;
+  if (Math.abs(number) >= 1e4) return `${(number / 1e4).toFixed(1)} 万${unit}`;
+  return `${number.toFixed(0)} ${unit}`.trim();
+};
+
 const fmtDate = (value) =>
   value == null
     ? "-"

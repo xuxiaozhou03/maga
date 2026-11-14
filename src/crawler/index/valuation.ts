@@ -46,7 +46,7 @@ async function fetchIndexValuation(
     };
   };
 
-  if (res.code !== "200") {
+  if (res.code !== "200" || !res.data.items) {
     return [];
   }
 
@@ -56,9 +56,9 @@ async function fetchIndexValuation(
     date: Number(item.tradeDate),
     value: item.valuationValue,
     percent:
-      item.historicalPercentile > 1
+      (item.historicalPercentile > 1
         ? item.historicalPercentile / 100
-        : item.historicalPercentile,
+        : item.historicalPercentile) || 0,
     peg: item.peg,
   }));
 }

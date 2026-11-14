@@ -3,6 +3,20 @@ import { prisma } from "../db.js";
 
 export const featuresRoute = new Hono();
 
+const snapshotFeatureNames = [
+  "ret_1w",
+  "ret_1m",
+  "ret_3m",
+  "vol_20d",
+  "max_dd_60d",
+  "ma_dev_20d",
+  "turnover_20d",
+  "val_percent",
+  "rank_ret_1m",
+  "rank_vol_20d",
+  "rank_val_percent",
+] as const;
+
 featuresRoute.get("/", async (context) => {
   const name = context.req.query("name");
   if (!name) return context.json({ error: "name required" }, 400);
@@ -22,7 +36,7 @@ featuresRoute.get("/", async (context) => {
 
   const limit = Math.max(
     1,
-    Math.min(Number(context.req.query("limit") ?? 20) || 20, 200),
+    Math.min(Number(context.req.query("limit") ?? 20) || 20, 500),
   );
   const rows = await prisma.feature.findMany({
     where: { name, date },
@@ -37,10 +51,37 @@ featuresRoute.get("/", async (context) => {
   const names = new Map(etfs.map((etf) => [etf.code, etf.name]));
   return context.json({
     date,
-    rows: rows.map((row) => ({
+    rows: rows.map((row, index) => ({
       ...row,
+      rank: index + 1,
       etfName: names.get(row.code) ?? "",
     })),
+  });
+});
+
+featuresRoute.get("/snapshot", async (context) => {
+  const latest = await prisma.feature.findFirst({
+    orderBy: { date: "desc" },
+    select: { date: true },
+  });
+  if (!latest) return context.json({ date: null, rows: [] });
+
+  const rows = await prisma.feature.findMany({
+    where: {
+      date: latest.date,
+      name: { in: [...snapshotFeatureNames] },
+    },
+    select: { code: true, name: true, value: true },
+  });
+  const byCode = new Map<string, Record<string, number>>();
+  for (const row of rows) {
+    if (!byCode.has(row.code)) byCode.set(row.code, {});
+    byCode.get(row.code)![row.name] = row.value;
+  }
+
+  return context.json({
+    date: latest.date,
+    rows: [...byCode].map(([code, features]) => ({ code, ...features })),
   });
 });
 

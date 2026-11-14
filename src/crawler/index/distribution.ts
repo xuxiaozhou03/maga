@@ -34,7 +34,7 @@ async function fetchIndustryDistribution(
     };
   };
 
-  if (res.code !== "200") {
+  if (res.code !== "200" || !res.data.resultMap?.["最新"]) {
     return [];
   }
 

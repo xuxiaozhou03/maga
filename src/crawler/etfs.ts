@@ -23,6 +23,8 @@ export const magaCodes = [
   "SP5CSSUP.SPI",
 ];
 
+const filterCodes = ["159973.SZ"];
+
 async function fetchEtfs() {
   const ret = await fetch(
     "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",

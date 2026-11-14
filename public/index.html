@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ETF 量化回测</title>
+    <title>ETF 总览 · ETF Quant Lab</title>
     <link rel="stylesheet" href="style.css" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   </head>
@@ -18,6 +18,9 @@
           </span>
         </a>
         <div class="nav-actions">
+          <a class="btn" href="#run-history">
+            <i data-lucide="history"></i>回测历史
+          </a>
           <button class="btn" id="syncBtn" type="button">
             <i data-lucide="refresh-cw"></i>同步数据
           </button>
@@ -31,94 +34,272 @@
     <main class="page-shell">
       <section class="page-intro">
         <div>
-          <p class="eyebrow">Research Dashboard</p>
-          <h1>回测工作台</h1>
+          <p class="eyebrow">ETF Universe</p>
+          <h1>ETF 总览</h1>
           <p class="subtitle">
-            汇总策略运行结果，检查 ETF 特征排序，并进入单次回测查看资金曲线与成交明细。
+            浏览 ETF 池的规模、行情与近期表现，并结合动量、波动、估值等特征排名筛选标的。
           </p>
         </div>
-        <div class="run-meta" id="dataStamp">数据状态读取中</div>
+        <div class="run-meta" id="dataStamp">正在读取 ETF 数据</div>
       </section>
 
-      <section class="summary-strip" aria-label="回测概览">
+      <section class="summary-strip" aria-label="ETF 概览">
         <div class="summary-item">
-          <span>累计回测</span>
-          <strong id="totalRuns">-</strong>
+          <span>ETF 数量</span>
+          <strong id="totalCount">-</strong>
         </div>
         <div class="summary-item">
-          <span>已完成</span>
-          <strong id="successRuns">-</strong>
+          <span>总规模</span>
+          <strong id="totalScale">-</strong>
         </div>
         <div class="summary-item">
-          <span>最近总收益</span>
-          <strong id="latestReturn">-</strong>
+          <span>上涨 / 下跌</span>
+          <strong id="upDown">-</strong>
         </div>
         <div class="summary-item">
-          <span>平均夏普</span>
-          <strong id="averageSharpe">-</strong>
+          <span>最新交易日</span>
+          <strong id="asOfDate">-</strong>
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="etf-list">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Universe</p>
+            <h2>ETF 列表</h2>
+          </div>
+          <span class="muted" id="resultMeta">正在载入</span>
+        </div>
+        <div id="etfTable">
+          <div class="empty"><strong>正在载入 ETF 列表</strong></div>
+        </div>
+      </section>
+
+      <section class="section" id="run-history">
         <div class="section-head">
           <div>
             <p class="eyebrow">Runs</p>
             <h2>回测历史</h2>
           </div>
-          <a class="btn" href="create.html">
-            <i data-lucide="play"></i>运行策略
-          </a>
+          <span class="muted" id="runMeta">正在载入回测记录</span>
         </div>
         <div id="runList">
           <div class="empty"><strong>正在载入回测记录</strong></div>
         </div>
       </section>
-
-      <section class="section">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Cross Section</p>
-            <h2>ETF 特征排名</h2>
-          </div>
-        </div>
-        <div class="toolbar">
-          <label class="field">
-            日期
-            <input id="featureDate" inputmode="numeric" placeholder="最新" />
-          </label>
-          <label class="field">
-            特征
-            <select id="featureName">
-              <option value="ret_1m">ret_1m · 一月动量</option>
-              <option value="ret_1w">ret_1w · 一周动量</option>
-              <option value="ret_3m">ret_3m · 三月动量</option>
-              <option value="vol_20d">vol_20d · 20 日波动</option>
-              <option value="max_dd_60d">max_dd_60d · 60 日回撤</option>
-              <option value="ma_dev_20d">ma_dev_20d · 均线偏离</option>
-              <option value="turnover_20d">turnover_20d · 成交额</option>
-              <option value="val_percent">val_percent · 估值分位</option>
-              <option value="rank_ret_1m">rank_ret_1m · 动量排名</option>
-              <option value="rank_vol_20d">rank_vol_20d · 低波排名</option>
-              <option value="rank_val_percent">rank_val_percent · 低估排名</option>
-            </select>
-          </label>
-          <label class="field">
-            TopN
-            <input id="featureLimit" type="number" value="20" min="1" max="200" />
-          </label>
-          <button class="btn" id="featureBtn" type="button">
-            <i data-lucide="search"></i>查询
-          </button>
-        </div>
-        <div id="featureList">
-          <div class="empty"><strong>正在载入特征数据</strong></div>
-        </div>
-      </section>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20261114-2"></script>
     <script>
       let strategyNames = {};
+      let overview = null;
+      let featureState = {
+        date: null,
+        rows: [],
+        byCode: new Map(),
+        loading: false,
+        error: null,
+      };
+      let sortState = { key: "rank_ret_1m", direction: "desc" };
+
+      const ETF_COLUMNS = [
+        { key: "code", label: "代码", type: "code" },
+        { key: "name", label: "名称", type: "name" },
+        { key: "trackingIndex", label: "跟踪指数", type: "text" },
+        { key: "scale", label: "规模", type: "scale" },
+        { key: "latestClose", label: "最新价", type: "price" },
+        { key: "latestChangePercent", label: "涨跌幅", type: "change" },
+        { key: "latestAmount", label: "成交额", type: "compact" },
+        { key: "ret20", label: "20 日", type: "pct" },
+        { key: "ret60", label: "60 日", type: "pct" },
+        { key: "premiumRate", label: "溢价率", type: "premium" },
+      ];
+      const FEATURE_COLUMNS = [
+        { key: "rank_ret_1m", label: "动量排名", type: "feature", format: "percent" },
+        { key: "rank_vol_20d", label: "低波排名", type: "feature", format: "percent" },
+        { key: "rank_val_percent", label: "低估排名", type: "feature", format: "percent" },
+        { key: "ret_1w", label: "一周动量", type: "feature", format: "percent" },
+        { key: "ret_1m", label: "一月动量", type: "feature", format: "percent" },
+        { key: "ret_3m", label: "三月动量", type: "feature", format: "percent" },
+        { key: "vol_20d", label: "20 日波动", type: "feature", format: "percent" },
+        { key: "max_dd_60d", label: "60 日回撤", type: "feature", format: "percent" },
+        { key: "ma_dev_20d", label: "均线偏离", type: "feature", format: "percent" },
+        { key: "turnover_20d", label: "20 日成交额", type: "feature", format: "compact" },
+        { key: "val_percent", label: "估值分位", type: "feature", format: "percent" },
+      ];
+      const COLUMNS = [...ETF_COLUMNS, ...FEATURE_COLUMNS];
+      const TEXT_SORT_KEYS = new Set(["code", "name", "trackingIndex"]);
+
+      const numberOr = (value, fallback) =>
+        value == null || !Number.isFinite(Number(value)) ? fallback : Number(value);
+
+      const scaleText = (value) =>
+        value == null ? "-" : `${(Number(value) / 1e8).toFixed(1)} 亿`;
+
+      const premiumText = (value) =>
+        value == null || !Number.isFinite(Number(value))
+          ? "-"
+          : `${Number(value).toFixed(2)}%`;
+
+      const featureValueText = (value, format) => {
+        if (value == null || !Number.isFinite(Number(value))) return "-";
+        return format === "compact"
+          ? fmtCompact(value, "元")
+          : fmtPct(value);
+      };
+
+      function mergedRows() {
+        return (overview?.rows ?? []).map((row) => {
+          const features = featureState.byCode.get(row.code) ?? {};
+          return { ...row, features };
+        });
+      }
+
+      function columnValue(row, column) {
+        return column.type === "feature"
+          ? row.features[column.key]
+          : row[column.key];
+      }
+
+      function sortedRows() {
+        const { key, direction } = sortState;
+        const column = COLUMNS.find((item) => item.key === key) || ETF_COLUMNS[3];
+        const factor = direction === "asc" ? 1 : -1;
+        return mergedRows().sort((left, right) => {
+          const a = columnValue(left, column);
+          const b = columnValue(right, column);
+          if (a == null && b == null) return 0;
+          if (a == null) return 1;
+          if (b == null) return -1;
+          if (column.type === "text" || TEXT_SORT_KEYS.has(column.key)) {
+            return String(a).localeCompare(String(b), "zh-CN") * factor;
+          }
+          return (Number(a) - Number(b)) * factor;
+        });
+      }
+
+      function renderSummary() {
+        if (!overview) return;
+        const { summary, asOf } = overview;
+        document.getElementById("totalCount").textContent = summary.count;
+        document.getElementById("totalScale").textContent = scaleText(summary.totalScale);
+        document.getElementById("upDown").innerHTML =
+          `<span class="positive">${summary.up}</span><span class="muted"> / </span><span class="negative">${summary.down}</span>`;
+        document.getElementById("asOfDate").textContent = fmtDate(asOf);
+        document.getElementById("dataStamp").textContent =
+          `${summary.priced} 只有最新行情 · 当日成交额 ${fmtCompact(summary.totalAmount, "元")}`;
+      }
+
+      function cellHtml(row, column) {
+        const href = `etf.html?code=${encodeURIComponent(row.code)}&limit=260`;
+        switch (column.type) {
+          case "code":
+            return `<a class="mono" href="${href}">${escapeHtml(row.code)}</a>`;
+          case "name":
+            return `<a href="${href}">${escapeHtml(row.name)}</a>`;
+          case "scale":
+            return scaleText(row.scale);
+          case "price":
+            return fmtNum(row.latestClose, 3);
+          case "change": {
+            const value = numberOr(row.latestChangePercent, 0) / 100;
+            return `<span class="${colorClass(value)}">${fmtPct(value)}</span>`;
+          }
+          case "compact":
+            return fmtCompact(row.latestAmount, "元");
+          case "pct":
+            return `<span class="${colorClass(row[column.key])}">${fmtPct(row[column.key])}</span>`;
+          case "premium":
+            return premiumText(row.premiumRate);
+          case "feature":
+            return featureValueText(row.features[column.key], column.format);
+          default:
+            return escapeHtml(row[column.key] || "-");
+        }
+      }
+
+      function headerHtml(column) {
+        const active = sortState.key === column.key;
+        const indicator = active ? (sortState.direction === "asc" ? "↑" : "↓") : "↕";
+        const ariaSort = active
+          ? ` aria-sort="${sortState.direction === "asc" ? "ascending" : "descending"}"`
+          : "";
+        return `<th${ariaSort}><button class="table-sort ${active ? "is-active" : ""}" type="button" data-sort="${column.key}">${escapeHtml(column.label)}<span class="sort-indicator">${indicator}</span></button></th>`;
+      }
+
+      function renderTable() {
+        if (!overview) return;
+        const rows = sortedRows();
+        const element = document.getElementById("etfTable");
+        document.getElementById("resultMeta").textContent =
+          `${overview.rows.length} 只 ETF · ${FEATURE_COLUMNS.length} 项特征${featureState.loading ? " · 特征载入中" : featureState.error ? " · 特征加载失败" : ""} · 点击表头排序 · 左右滑动查看全部特征`;
+
+        if (!rows.length) {
+          element.innerHTML = emptyState("暂无 ETF 数据");
+          return;
+        }
+        element.innerHTML = [
+          '<div class="table-wrap"><table><thead><tr class="table-group-row">',
+          `<th colspan="${ETF_COLUMNS.length}">ETF 行情</th>`,
+          `<th colspan="${FEATURE_COLUMNS.length}">特征</th>`,
+          "</tr><tr>",
+          COLUMNS.map(headerHtml).join(""),
+          "</tr></thead><tbody>",
+          rows
+            .map(
+              (row) =>
+                `<tr>${COLUMNS.map((column) => `<td>${cellHtml(row, column)}</td>`).join("")}</tr>`,
+            )
+            .join(""),
+          "</tbody></table></div>",
+        ].join("");
+      }
+
+      function render() {
+        renderSummary();
+        renderTable();
+        refreshIcons();
+      }
+
+      async function loadOverview() {
+        try {
+          overview = await api("/etfs/overview");
+          render();
+        } catch (error) {
+          document.getElementById("etfTable").innerHTML = emptyState(
+            "ETF 列表加载失败",
+            error.message,
+          );
+          document.getElementById("dataStamp").textContent = "数据读取失败";
+          toast(`ETF 列表加载失败：${error.message}`, "error");
+        }
+      }
+
+      async function loadFeatures() {
+        featureState = { ...featureState, loading: true, error: null };
+        renderTable();
+        try {
+          const response = await api("/features/snapshot");
+          featureState = {
+            date: response.date,
+            rows: response.rows,
+            byCode: new Map(response.rows.map((row) => [row.code, row])),
+            loading: false,
+            error: null,
+          };
+          renderTable();
+        } catch (error) {
+          featureState = {
+            date: null,
+            rows: [],
+            byCode: new Map(),
+            loading: false,
+            error: error.message,
+          };
+          renderTable();
+          toast(`特征数据加载失败：${error.message}`, "error");
+        }
+      }
 
       async function loadRuns() {
         const element = document.getElementById("runList");
@@ -130,31 +311,10 @@
           strategyNames = Object.fromEntries(
             strategies.map((strategy) => [strategy.key, strategy.name]),
           );
-          document.getElementById("totalRuns").textContent = rows.length;
           const successful = rows.filter((row) => row.status === "success");
-          document.getElementById("successRuns").textContent = successful.length;
-
-          if (rows.length) {
-            const latest = rows[0];
-            const latestElement = document.getElementById("latestReturn");
-            latestElement.textContent = fmtPct(latest.totalReturn);
-            latestElement.className = colorClass(latest.totalReturn);
-            document.getElementById("dataStamp").textContent =
-              `最近运行 ${fmtDateTime(latest.createdAt)} · ${statusPill(latest.status)}`;
-          } else {
-            document.getElementById("dataStamp").textContent = "尚无运行记录";
-          }
-
-          const sharpeValues = successful
-            .map((row) => row.sharpe)
-            .filter((value) => value != null);
-          document.getElementById("averageSharpe").textContent = sharpeValues.length
-            ? fmtNum(
-                sharpeValues.reduce((total, value) => total + value, 0) /
-                  sharpeValues.length,
-                2,
-              )
-            : "-";
+          document.getElementById("runMeta").textContent = rows.length
+            ? `${rows.length} 次运行 · ${successful.length} 次完成 · 最近 ${fmtDateTime(rows[0].createdAt)}`
+            : "暂无运行记录";
 
           table(
             element,
@@ -176,42 +336,27 @@
           );
         } catch (error) {
           element.innerHTML = emptyState("回测记录加载失败", error.message);
+          document.getElementById("runMeta").textContent = "回测记录读取失败";
         }
       }
 
-      async function loadFeatures() {
-        const element = document.getElementById("featureList");
-        const name = document.getElementById("featureName").value;
-        const date = document.getElementById("featureDate").value.trim();
-        const limit = document.getElementById("featureLimit").value || 20;
-        const params = new URLSearchParams({ name, limit });
-        if (date) params.set("date", date);
-        try {
-          const response = await api(`/features?${params.toString()}`);
-          if (!response.date) {
-            element.innerHTML = emptyState("暂无特征数据");
-            return;
-          }
-          document.getElementById("featureDate").value = String(response.date);
-          table(
-            element,
-            ["#", "代码", "ETF 名称", "指标值"],
-            response.rows.map((row, index) => [
-              index + 1,
-              `<span class="mono">${escapeHtml(row.code)}</span>`,
-              escapeHtml(row.etfName || "-"),
-              fmtNum(row.value),
-            ]),
-            "该交易日无特征数据",
-          );
-        } catch (error) {
-          element.innerHTML = emptyState("特征数据加载失败", error.message);
+      document.getElementById("etfTable").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-sort]");
+        if (!button) return;
+        const key = button.dataset.sort;
+        if (sortState.key === key) {
+          sortState = {
+            key,
+            direction: sortState.direction === "asc" ? "desc" : "asc",
+          };
+        } else {
+          sortState = {
+            key,
+            direction: TEXT_SORT_KEYS.has(key) ? "asc" : "desc",
+          };
         }
-      }
-
-      document.getElementById("featureBtn").addEventListener("click", loadFeatures);
-      document.getElementById("featureName").addEventListener("change", loadFeatures);
-      document.getElementById("featureDate").addEventListener("change", loadFeatures);
+        renderTable();
+      });
 
       document.getElementById("syncBtn").addEventListener("click", async (event) => {
         const button = event.currentTarget;
@@ -219,7 +364,7 @@
         try {
           await api("/sync", { method: "POST", body: "{}" });
           toast("数据同步完成", "success");
-          await Promise.all([loadRuns(), loadFeatures()]);
+          await Promise.all([loadOverview(), loadFeatures(), loadRuns()]);
         } catch (error) {
           toast(`同步失败：${error.message}`, "error");
         } finally {
@@ -227,7 +372,7 @@
         }
       });
 
-      Promise.all([loadRuns(), loadFeatures()]).finally(refreshIcons);
+      Promise.all([loadOverview(), loadFeatures(), loadRuns()]).finally(refreshIcons);
     </script>
   </body>
 </html>

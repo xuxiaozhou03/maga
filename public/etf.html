@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETF 行情 · ETF Quant Lab</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">QF</span>
+          <span class="brand-copy">
+            <strong>ETF Quant Lab</strong>
+            <span>A 股 ETF 策略研究与回测</span>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="btn" href="index.html#etf-list">
+            <i data-lucide="list"></i>ETF 列表
+          </a>
+          <a class="btn" href="index.html">
+            <i data-lucide="arrow-left"></i>返回首页
+          </a>
+          <a class="btn btn-primary" href="create.html">
+            <i data-lucide="plus"></i>新建回测
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="page-intro">
+        <div>
+          <p class="eyebrow">Market Explorer</p>
+          <h1 id="pageTitle">ETF 行情</h1>
+          <p class="subtitle">
+            查看日 K、均线与成交量，并结合指数估值和行业分布检查区间收益与风险。
+          </p>
+        </div>
+        <form class="etf-picker" id="etfForm">
+          <label class="field" for="etfCode">
+            ETF 代码 / 名称
+            <input
+              id="etfCode"
+              list="etfOptions"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="例如 510300 或 沪深300"
+              value="510300.SH"
+            />
+            <datalist id="etfOptions"></datalist>
+          </label>
+          <button class="btn btn-primary" id="loadBtn" type="submit">
+            <i data-lucide="search"></i>查询
+          </button>
+        </form>
+      </section>
+
+      <section class="quote-strip" aria-label="ETF 行情概览">
+        <div class="quote-lead">
+          <p class="eyebrow" id="etfCodeLabel">--</p>
+          <h2 id="etfName">正在载入行情</h2>
+          <div class="quote-price">
+            <strong id="latestClose">--</strong>
+            <span id="latestChange" class="muted">--</span>
+          </div>
+          <p class="muted" id="etfMeta">读取 ETF 基础信息与日 K 数据</p>
+        </div>
+        <div class="quote-metrics" id="quoteMetrics"></div>
+      </section>
+
+      <section class="section">
+        <div class="chart-toolbar">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">K-line</p>
+              <h2>日 K 与成交量</h2>
+            </div>
+          </div>
+          <div class="range-tabs" id="rangeTabs" role="group" aria-label="K 线周期">
+            <button class="range-tab" type="button" data-limit="66">3 月</button>
+            <button class="range-tab" type="button" data-limit="130">6 月</button>
+            <button class="range-tab is-active" type="button" data-limit="260">1 年</button>
+            <button class="range-tab" type="button" data-limit="780">3 年</button>
+            <button class="range-tab" type="button" data-limit="1300">5 年</button>
+            <button class="range-tab" type="button" data-limit="6000">全部</button>
+          </div>
+        </div>
+        <div class="kline-panel" id="klineChart">
+          <div class="empty"><strong>正在载入行情</strong></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Valuation</p>
+            <h2>指数估值</h2>
+          </div>
+          <span class="muted" id="valuationMeta"></span>
+        </div>
+        <div class="valuation-layout">
+          <div class="valuation-summary" id="valuationSummary">
+            <div class="empty"><strong>正在载入估值数据</strong></div>
+          </div>
+          <div class="valuation-panel" id="valuationChart">
+            <div class="empty"><strong>正在载入估值走势</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Distribution</p>
+            <h2>行业分布</h2>
+          </div>
+          <span class="muted" id="distributionMeta"></span>
+        </div>
+        <div class="distribution-layout">
+          <div class="distribution-chart" id="distributionChart">
+            <div class="empty"><strong>正在载入行业分布</strong></div>
+          </div>
+          <div class="distribution-table" id="distributionTable">
+            <div class="empty"><strong>正在载入行业权重</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Statistics</p>
+            <h2>区间统计</h2>
+          </div>
+          <span class="muted" id="statsMeta"></span>
+        </div>
+        <div class="stats-layout" id="statsLayout"></div>
+      </section>
+    </main>
+
+    <script src="app.js?v=20261114-2"></script>
+    <script>
+      const UP_COLOR = "#cb4141";
+      const DOWN_COLOR = "#14805e";
+      const RANGE_LIMITS = [66, 130, 260, 780, 1300, 6000];
+      const VALUATION_TYPES = [
+        { type: "PE", name: "市盈率" },
+        { type: "PB", name: "市净率" },
+        { type: "PS", name: "市销率" },
+        { type: "DID", name: "DID" },
+      ];
+
+      let etfRows = [];
+      let current = null;
+      let klineChart = null;
+      let valuationChart = null;
+      let distributionChart = null;
+      let valuationData = null;
+      let distributionData = null;
+      let analyticsCode = null;
+      let activeValuationType = "PE";
+      let activeLimit = 260;
+
+      const codeInput = document.getElementById("etfCode");
+      const loadButton = document.getElementById("loadBtn");
+
+      const fmtPrice = (value) => fmtNum(value, 3);
+
+      const fmtPercentPoints = (value, digits = 2) =>
+        value == null || !Number.isFinite(Number(value))
+          ? "-"
+          : `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(digits)}%`;
+
+      const metric = (label, value, className = "") =>
+        `<div class="quote-metric"><span>${escapeHtml(label)}</span><strong class="${className}">${value}</strong></div>`;
+
+      const statRow = (label, value) =>
+        `<div class="stat-row"><dt>${escapeHtml(label)}</dt><dd>${value}</dd></div>`;
+
+      const statCard = (title, rows) =>
+        `<article class="stat-card"><h3>${escapeHtml(title)}</h3><dl class="stat-list">${rows.join("")}</dl></article>`;
+
+      const withDate = (value, date) =>
+        `${value}<small>${fmtDate(date)}</small>`;
+
+      function normalizeCode(value) {
+        const text = String(value ?? "").trim();
+        const full = text.match(/(\d{6})\.(SH|SZ|BJ)/i);
+        if (full) return `${full[1]}.${full[2].toUpperCase()}`;
+        const digits = text.match(/\d{6}/);
+        return digits ? digits[0] : text.toUpperCase();
+      }
+
+      function resolveCode(value) {
+        const normalized = normalizeCode(value);
+        if (etfRows.some((etf) => etf.code === normalized)) return normalized;
+        const text = String(value ?? "").trim().toLowerCase();
+        const matched = etfRows.find(
+          (etf) =>
+            etf.code.toLowerCase() === text ||
+            etf.code.split(".")[0] === text ||
+            etf.name.toLowerCase().includes(text) ||
+            `${etf.code} · ${etf.name}`.toLowerCase() === text,
+        );
+        return matched?.code || normalized;
+      }
+
+      function setActiveRange(limit) {
+        activeLimit = limit;
+        document.querySelectorAll(".range-tab").forEach((button) => {
+          button.classList.toggle("is-active", Number(button.dataset.limit) === limit);
+        });
+      }
+
+      async function loadEtfOptions() {
+        const { rows } = await api("/etfs?limit=500");
+        etfRows = rows;
+        document.getElementById("etfOptions").innerHTML = rows
+          .map(
+            (etf) =>
+              `<option value="${escapeHtml(`${etf.code} · ${etf.name}`)}"></option>`,
+          )
+          .join("");
+      }
+
+      function renderQuote(data) {
+        const { etf, stats } = data;
+        const latest = stats.latest;
+        const changeClass =
+          latest.changePercent > 0
+            ? "positive"
+            : latest.changePercent < 0
+              ? "negative"
+              : "muted";
+        const premium =
+          etf.premiumRate == null ? "-" : `${etf.premiumRate.toFixed(2)}%`;
+
+        document.title = `${etf.name} (${etf.code}) · ETF 行情`;
+        document.getElementById("pageTitle").textContent = etf.name;
+        document.getElementById("etfCodeLabel").textContent = etf.code;
+        document.getElementById("etfName").textContent = etf.name;
+        document.getElementById("latestClose").textContent = fmtPrice(latest.close);
+        document.getElementById("latestChange").className = changeClass;
+        document.getElementById("latestChange").textContent =
+          `${latest.change > 0 ? "+" : ""}${fmtPrice(latest.change)} (${fmtPercentPoints(latest.changePercent)})`;
+        document.getElementById("etfMeta").textContent =
+          `跟踪 ${etf.trackingIndex || "-"} · 规模 ${(etf.scale / 1e8).toFixed(1)} 亿 · 溢价率 ${premium} · 截至 ${fmtDate(latest.date)}`;
+
+        document.getElementById("quoteMetrics").innerHTML = [
+          metric("区间涨跌", fmtPct(stats.return), colorClass(stats.return)),
+          metric(
+            "年化收益",
+            fmtPct(stats.annualReturn),
+            colorClass(stats.annualReturn),
+          ),
+          metric("年化波动", fmtPct(stats.volatility)),
+          metric("最大回撤", fmtPct(stats.maxDrawdown), "negative"),
+          metric("夏普比率", fmtNum(stats.sharpe, 2)),
+        ].join("");
+      }
+
+      function movingAverage(rows, period) {
+        let sum = 0;
+        return rows.map((row, index) => {
+          sum += row.close;
+          if (index >= period) sum -= rows[index - period].close;
+          return index >= period - 1 ? Number((sum / period).toFixed(4)) : null;
+        });
+      }
+
+      function tooltipHtml(row) {
+        const color = row.close >= row.open ? UP_COLOR : DOWN_COLOR;
+        const sign = row.changePercent > 0 ? "+" : "";
+        return [
+          `<div style="font-weight:700;margin-bottom:7px">${fmtDate(row.date)}</div>`,
+          `<div style="display:grid;grid-template-columns:auto auto;gap:2px 18px">`,
+          `<span>开盘</span><b style="text-align:right">${fmtPrice(row.open)}</b>`,
+          `<span>最高</span><b style="text-align:right">${fmtPrice(row.high)}</b>`,
+          `<span>最低</span><b style="text-align:right">${fmtPrice(row.low)}</b>`,
+          `<span>收盘</span><b style="text-align:right;color:${color}">${fmtPrice(row.close)}</b>`,
+          `<span>涨跌幅</span><b style="text-align:right;color:${color}">${sign}${row.changePercent.toFixed(2)}%</b>`,
+          `<span>成交额</span><b style="text-align:right">${fmtCompact(row.amount, "元")}</b>`,
+          `</div>`,
+        ].join("");
+      }
+
+      function renderChart(rows) {
+        const element = document.getElementById("klineChart");
+        if (typeof window.echarts === "undefined") {
+          element.innerHTML = emptyState(
+            "图表库加载失败",
+            "请检查网络后刷新页面重试",
+          );
+          return;
+        }
+        if (!rows.length) {
+          element.innerHTML = emptyState("暂无 K 线数据");
+          return;
+        }
+
+        if (klineChart) klineChart.dispose();
+        element.innerHTML = "";
+        klineChart = window.echarts.init(element, null, { renderer: "canvas" });
+
+        const dates = rows.map((row) => fmtDate(row.date));
+        const candles = rows.map((row) => [row.open, row.close, row.low, row.high]);
+        const volumes = rows.map((row) => ({
+          value: row.volume,
+          itemStyle: { color: row.close >= row.open ? UP_COLOR : DOWN_COLOR },
+        }));
+        const visibleBars = 260;
+        const zoomStart =
+          rows.length > visibleBars
+            ? Math.round((1 - visibleBars / rows.length) * 1000) / 10
+            : 0;
+
+        klineChart.setOption({
+          animationDuration: 300,
+          textStyle: {
+            fontFamily:
+              '"SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+          },
+          tooltip: {
+            trigger: "axis",
+            axisPointer: { type: "cross", snap: true },
+            confine: true,
+            borderWidth: 0,
+            padding: 11,
+            backgroundColor: "rgba(24, 33, 40, 0.95)",
+            textStyle: { color: "#fff", fontSize: 12 },
+            formatter: (params) => {
+              const row = rows[params[0]?.dataIndex];
+              return row ? tooltipHtml(row) : "";
+            },
+          },
+          axisPointer: { link: [{ xAxisIndex: "all" }] },
+          legend: {
+            top: 9,
+            right: 18,
+            icon: "roundRect",
+            itemWidth: 11,
+            itemHeight: 2,
+            itemGap: 14,
+            textStyle: { color: "#66737d", fontSize: 11 },
+            data: ["MA5", "MA20", "MA60"],
+          },
+          grid: [
+            { left: 62, right: 22, top: 42, height: "57%" },
+            { left: 62, right: 22, top: "72%", height: "13%" },
+          ],
+          xAxis: [
+            {
+              type: "category",
+              data: dates,
+              boundaryGap: true,
+              axisLine: { lineStyle: { color: "#c6d0d7" } },
+              axisTick: { show: false },
+              axisLabel: { show: false },
+              axisPointer: { label: { show: false } },
+            },
+            {
+              type: "category",
+              gridIndex: 1,
+              data: dates,
+              boundaryGap: true,
+              axisLine: { lineStyle: { color: "#c6d0d7" } },
+              axisTick: { show: false },
+              axisLabel: { color: "#66737d", fontSize: 10, hideOverlap: true },
+              axisPointer: { label: { show: false } },
+            },
+          ],
+          yAxis: [
+            {
+              scale: true,
+              splitNumber: 5,
+              axisLabel: {
+                color: "#66737d",
+                fontSize: 10,
+                formatter: (value) => Number(value).toFixed(2),
+              },
+              splitLine: { lineStyle: { color: "#e8edf1" } },
+            },
+            {
+              gridIndex: 1,
+              splitNumber: 2,
+              axisLabel: {
+                color: "#66737d",
+                fontSize: 10,
+                formatter: (value) => fmtCompact(value),
+              },
+              splitLine: { show: false },
+            },
+          ],
+          dataZoom: [
+            { type: "inside", xAxisIndex: [0, 1], start: zoomStart, end: 100 },
+            {
+              type: "slider",
+              xAxisIndex: [0, 1],
+              start: zoomStart,
+              end: 100,
+              bottom: 4,
+              height: 20,
+              borderColor: "#dbe2e7",
+              backgroundColor: "#f8fafb",
+              fillerColor: "rgba(20, 107, 99, 0.10)",
+              handleStyle: { color: "#146b63", borderColor: "#146b63" },
+              moveHandleStyle: { color: "#146b63" },
+              textStyle: { color: "#66737d", fontSize: 10 },
+            },
+          ],
+          series: [
+            {
+              name: "日 K",
+              type: "candlestick",
+              data: candles,
+              barMaxWidth: 12,
+              itemStyle: {
+                color: UP_COLOR,
+                color0: DOWN_COLOR,
+                borderColor: UP_COLOR,
+                borderColor0: DOWN_COLOR,
+              },
+            },
+            {
+              name: "MA5",
+              type: "line",
+              data: movingAverage(rows, 5),
+              showSymbol: false,
+              smooth: true,
+              lineStyle: { width: 1.2, color: "#c66a2b" },
+              itemStyle: { color: "#c66a2b" },
+            },
+            {
+              name: "MA20",
+              type: "line",
+              data: movingAverage(rows, 20),
+              showSymbol: false,
+              smooth: true,
+              lineStyle: { width: 1.2, color: "#2b6cb0" },
+              itemStyle: { color: "#2b6cb0" },
+            },
+            {
+              name: "MA60",
+              type: "line",
+              data: movingAverage(rows, 60),
+              showSymbol: false,
+              smooth: true,
+              lineStyle: { width: 1.2, color: "#72518c" },
+              itemStyle: { color: "#72518c" },
+            },
+            {
+              name: "成交量",
+              type: "bar",
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: volumes,
+              barWidth: "58%",
+            },
+          ],
+        });
+      }
+
+      function valuationDigits(type, value) {
+        if (type === "DID") return 4;
+        const absolute = Math.abs(Number(value));
+        if (absolute >= 100) return 2;
+        if (absolute >= 10) return 3;
+        return 4;
+      }
+
+      function valuationTone(percent) {
+        if (percent == null || !Number.isFinite(Number(percent))) {
+          return { className: "", label: "暂无分位" };
+        }
+        if (Number(percent) <= 0.3) return { className: "is-low", label: "低估" };
+        if (Number(percent) >= 0.7) return { className: "is-high", label: "高估" };
+        return { className: "is-mid", label: "中性" };
+      }
+
+      function valuationCard(item) {
+        const latest = item.latest;
+        const config = VALUATION_TYPES.find((entry) => entry.type === item.type);
+        const tone = valuationTone(latest?.percent);
+        const value = latest
+          ? fmtNum(latest.value, valuationDigits(item.type, latest.value))
+          : "-";
+        const percentile = latest
+          ? `<span class="valuation-percent ${tone.className}">${tone.label} ${fmtPct(latest.percent)}</span>`
+          : '<span class="valuation-percent">暂无分位</span>';
+        return [
+          `<button class="valuation-card ${item.type === activeValuationType ? "is-active" : ""}"`,
+          ` type="button" data-valuation-type="${item.type}"`,
+          ` aria-pressed="${item.type === activeValuationType}">`,
+          `<span class="valuation-card-head"><span>${item.type} · ${escapeHtml(config?.name || item.type)}</span><strong>${value}</strong></span>`,
+          `<span class="valuation-card-foot"><span>${latest ? fmtDate(latest.date) : "暂无数据"}</span>${percentile}</span>`,
+          `</button>`,
+        ].join("");
+      }
+
+      function chartTooltipBase(title) {
+        return `<div style="font-weight:700;margin-bottom:7px">${title}</div>`;
+      }
+
+      function renderValuationChart(type) {
+        const element = document.getElementById("valuationChart");
+        if (!valuationData) return;
+        const rows = valuationData.rows.filter((row) => row.type === type);
+        if (!rows.length) {
+          if (valuationChart) valuationChart.dispose();
+          valuationChart = null;
+          element.innerHTML = emptyState("暂无该估值指标的历史数据");
+          return;
+        }
+        if (typeof window.echarts === "undefined") {
+          element.innerHTML = emptyState("图表库加载失败", "请检查网络后刷新页面重试");
+          return;
+        }
+
+        if (valuationChart) valuationChart.dispose();
+        element.innerHTML = "";
+        valuationChart = window.echarts.init(element, null, { renderer: "canvas" });
+        const config = VALUATION_TYPES.find((entry) => entry.type === type);
+
+        valuationChart.setOption({
+          animationDuration: 300,
+          textStyle: {
+            fontFamily:
+              '"SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+          },
+          tooltip: {
+            trigger: "axis",
+            confine: true,
+            borderWidth: 0,
+            padding: 11,
+            backgroundColor: "rgba(24, 33, 40, 0.95)",
+            textStyle: { color: "#fff", fontSize: 12 },
+            formatter: (params) => {
+              const point = rows[params[0]?.dataIndex];
+              if (!point) return "";
+              return [
+                chartTooltipBase(fmtDate(point.date)),
+                `<div style="display:grid;grid-template-columns:auto auto;gap:3px 20px">`,
+                `<span>${escapeHtml(type)} ${escapeHtml(config?.name || "")}</span>`,
+                `<b style="text-align:right;color:#7dd3c8">${fmtNum(point.value, valuationDigits(type, point.value))}</b>`,
+                `<span>历史分位</span>`,
+                `<b style="text-align:right;color:#f0b36b">${fmtPct(point.percent)}</b>`,
+                point.peg == null ? "" : `<span>PEG</span><b style="text-align:right">${fmtNum(point.peg, 3)}</b>`,
+                `</div>`,
+              ].join("");
+            },
+          },
+          legend: {
+            top: 5,
+            right: 18,
+            icon: "roundRect",
+            itemWidth: 11,
+            itemHeight: 2,
+            itemGap: 16,
+            textStyle: { color: "#66737d", fontSize: 11 },
+            data: ["估值", "历史分位"],
+          },
+          grid: { left: 62, right: 58, top: 42, bottom: 46 },
+          xAxis: {
+            type: "category",
+            data: rows.map((row) => fmtDate(row.date)),
+            boundaryGap: false,
+            axisLine: { lineStyle: { color: "#c6d0d7" } },
+            axisTick: { show: false },
+            axisLabel: { color: "#66737d", fontSize: 10, hideOverlap: true },
+          },
+          yAxis: [
+            {
+              type: "value",
+              scale: true,
+              splitNumber: 5,
+              axisLabel: {
+                color: "#66737d",
+                fontSize: 10,
+                formatter: (value) => fmtNum(value, valuationDigits(type, value)),
+              },
+              splitLine: { lineStyle: { color: "#e8edf1" } },
+            },
+            {
+              type: "value",
+              min: 0,
+              max: 100,
+              splitNumber: 5,
+              axisLabel: {
+                color: "#66737d",
+                fontSize: 10,
+                formatter: (value) => `${Number(value).toFixed(0)}%`,
+              },
+              splitLine: { show: false },
+            },
+          ],
+          dataZoom: [{ type: "inside", xAxisIndex: 0, start: 0, end: 100 }],
+          series: [
+            {
+              name: "估值",
+              type: "line",
+              data: rows.map((row) => row.value),
+              showSymbol: false,
+              smooth: true,
+              lineStyle: { width: 1.8, color: "#146b63" },
+              itemStyle: { color: "#146b63" },
+              areaStyle: { color: "rgba(20, 107, 99, 0.08)" },
+            },
+            {
+              name: "历史分位",
+              type: "line",
+              yAxisIndex: 1,
+              data: rows.map((row) =>
+                row.percent == null ? null : Number(row.percent) * 100,
+              ),
+              showSymbol: false,
+              smooth: true,
+              lineStyle: { width: 1.3, color: "#c66a2b", type: "dashed" },
+              itemStyle: { color: "#c66a2b" },
+            },
+          ],
+        });
+      }
+
+      function renderValuation(data) {
+        const summary = document.getElementById("valuationSummary");
+        const types = data.types || [];
+        const latestDate = types
+          .map((item) => item.latest?.date)
+          .filter((date) => date != null)
+          .sort((left, right) => right - left)[0];
+        document.getElementById("valuationMeta").textContent = data.indexCode
+          ? `${data.trackingIndex || data.indexCode} · ${fmtDate(latestDate)}`
+          : "该 ETF 未配置跟踪指数";
+
+        if (!data.rows?.length) {
+          document.getElementById("valuationMeta").textContent = data.indexCode
+            ? `${data.trackingIndex || data.indexCode} · 暂无估值数据`
+            : "该 ETF 未配置跟踪指数";
+          summary.innerHTML = emptyState("暂无指数估值数据");
+          if (valuationChart) valuationChart.dispose();
+          valuationChart = null;
+          document.getElementById("valuationChart").innerHTML = emptyState(
+            data.indexCode ? "暂无可绘制的估值走势" : "未配置跟踪指数",
+          );
+          return;
+        }
+
+        summary.innerHTML = types.map(valuationCard).join("");
+        renderValuationChart(activeValuationType);
+      }
+
+      function distributionChartRows(rows) {
+        const limit = 14;
+        const visible = rows.slice(0, limit).map((row) => ({ ...row }));
+        const rest = rows.slice(limit);
+        const otherWeight = rest.reduce((sum, row) => sum + row.weight, 0);
+        if (rest.length) {
+          visible.push({
+            industryName: `其他 ${rest.length} 个行业`,
+            weight: otherWeight,
+            isOther: true,
+          });
+        }
+        return visible;
+      }
+
+      function renderDistributionChart(rows) {
+        const element = document.getElementById("distributionChart");
+        if (typeof window.echarts === "undefined") {
+          element.innerHTML = emptyState("图表库加载失败", "请检查网络后刷新页面重试");
+          return;
+        }
+
+        if (distributionChart) distributionChart.dispose();
+        element.innerHTML = "";
+        distributionChart = window.echarts.init(element, null, {
+          renderer: "canvas",
+        });
+        const chartRows = distributionChartRows(rows);
+
+        distributionChart.setOption({
+          animationDuration: 300,
+          textStyle: {
+            fontFamily:
+              '"SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+          },
+          tooltip: {
+            trigger: "axis",
+            axisPointer: { type: "shadow" },
+            confine: true,
+            borderWidth: 0,
+            padding: 10,
+            backgroundColor: "rgba(24, 33, 40, 0.95)",
+            textStyle: { color: "#fff", fontSize: 12 },
+            formatter: (params) => {
+              const row = chartRows[params[0]?.dataIndex];
+              return row
+                ? `${chartTooltipBase(escapeHtml(row.industryName))}<b>${fmtNum(row.weight, 2)}%</b>`
+                : "";
+            },
+          },
+          grid: { left: 122, right: 42, top: 16, bottom: 34 },
+          xAxis: {
+            type: "value",
+            axisLabel: {
+              color: "#66737d",
+              fontSize: 10,
+              formatter: (value) => `${Number(value).toFixed(0)}%`,
+            },
+            splitLine: { lineStyle: { color: "#e8edf1" } },
+          },
+          yAxis: {
+            type: "category",
+            inverse: true,
+            data: chartRows.map((row) => row.industryName),
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: {
+              color: "#46535d",
+              fontSize: 10,
+              width: 112,
+              overflow: "truncate",
+            },
+          },
+          series: [
+            {
+              type: "bar",
+              data: chartRows.map((row, index) => ({
+                value: row.weight,
+                itemStyle: {
+                  color: row.isOther
+                    ? "#aab4ba"
+                    : index < 3
+                      ? "#146b63"
+                      : "#69a49e",
+                  borderRadius: [0, 3, 3, 0],
+                },
+              })),
+              barMaxWidth: 15,
+              label: {
+                show: true,
+                position: "right",
+                color: "#66737d",
+                fontSize: 10,
+                formatter: (params) => `${Number(params.value).toFixed(2)}%`,
+              },
+            },
+          ],
+        });
+      }
+
+      function renderDistribution(data) {
+        const rows = data.rows || [];
+        const tableElement = document.getElementById("distributionTable");
+        document.getElementById("distributionMeta").textContent = data.indexCode
+          ? `${rows.length} 个行业 · 合计 ${fmtNum(data.totalWeight, 2)}%`
+          : "该 ETF 未配置跟踪指数";
+
+        if (!rows.length) {
+          document.getElementById("distributionMeta").textContent = data.indexCode
+            ? `${data.trackingIndex || data.indexCode} · 暂无行业分布`
+            : "该 ETF 未配置跟踪指数";
+          tableElement.innerHTML = emptyState("暂无行业分布数据");
+          if (distributionChart) distributionChart.dispose();
+          distributionChart = null;
+          document.getElementById("distributionChart").innerHTML = emptyState(
+            data.indexCode ? "暂无可绘制的行业分布" : "未配置跟踪指数",
+          );
+          return;
+        }
+
+        table(
+          tableElement,
+          ["#", "行业", "权重"],
+          rows.map((row, index) => [
+            `<span class="muted">${index + 1}</span>`,
+            escapeHtml(row.industryName),
+            `<span class="mono">${fmtNum(row.weight, 2)}%</span>`,
+          ]),
+          "暂无行业分布数据",
+        );
+        renderDistributionChart(rows);
+      }
+
+      async function loadIndexAnalytics(etf) {
+        if (analyticsCode === etf.code) return;
+        analyticsCode = etf.code;
+        valuationData = null;
+        distributionData = null;
+        activeValuationType = "PE";
+        if (valuationChart) valuationChart.dispose();
+        if (distributionChart) distributionChart.dispose();
+        valuationChart = null;
+        distributionChart = null;
+        document.getElementById("valuationSummary").innerHTML =
+          '<div class="empty"><strong>正在载入估值数据</strong></div>';
+        document.getElementById("valuationChart").innerHTML =
+          '<div class="empty"><strong>正在载入估值走势</strong></div>';
+        document.getElementById("distributionChart").innerHTML =
+          '<div class="empty"><strong>正在载入行业分布</strong></div>';
+        document.getElementById("distributionTable").innerHTML =
+          '<div class="empty"><strong>正在载入行业权重</strong></div>';
+
+        const [valuationResult, distributionResult] = await Promise.allSettled([
+          api(`/etfs/${encodeURIComponent(etf.code)}/valuation`),
+          api(`/etfs/${encodeURIComponent(etf.code)}/distribution`),
+        ]);
+        if (analyticsCode !== etf.code) return;
+
+        if (valuationResult.status === "fulfilled") {
+          valuationData = valuationResult.value;
+          renderValuation(valuationData);
+        } else {
+          if (valuationChart) valuationChart.dispose();
+          valuationChart = null;
+          document.getElementById("valuationMeta").textContent = "估值数据读取失败";
+          document.getElementById("valuationSummary").innerHTML = emptyState(
+            "指数估值加载失败",
+            valuationResult.reason?.message,
+          );
+          document.getElementById("valuationChart").innerHTML = emptyState(
+            "指数估值加载失败",
+          );
+        }
+
+        if (distributionResult.status === "fulfilled") {
+          distributionData = distributionResult.value;
+          renderDistribution(distributionData);
+        } else {
+          if (distributionChart) distributionChart.dispose();
+          distributionChart = null;
+          document.getElementById("distributionMeta").textContent = "行业分布读取失败";
+          document.getElementById("distributionChart").innerHTML = emptyState(
+            "行业分布加载失败",
+            distributionResult.reason?.message,
+          );
+          document.getElementById("distributionTable").innerHTML = emptyState(
+            "行业权重加载失败",
+          );
+        }
+        refreshIcons();
+      }
+
+      function periodReturn(rows, days) {
+        if (rows.length <= days) return null;
+        const base = rows[rows.length - 1 - days].close;
+        if (!base) return null;
+        return rows[rows.length - 1].close / base - 1;
+      }
+
+      function renderStats(data) {
+        const { stats, klines, etf } = data;
+        const latest = stats.latest;
+        const periodReturns = [5, 20, 60]
+          .map((days) => ({ days, value: periodReturn(klines, days) }))
+          .filter((item) => item.value != null);
+
+        document.getElementById("statsMeta").textContent =
+          `${fmtDate(stats.range.start)} — ${fmtDate(stats.range.end)} · ${stats.tradingDays} 个交易日`;
+
+        const overview = [
+          statRow("区间", `${fmtDate(stats.range.start)} — ${fmtDate(stats.range.end)}`),
+          statRow("交易日", `${stats.tradingDays} 天`),
+          statRow("区间最高", withDate(fmtPrice(stats.high), stats.highDate)),
+          statRow("区间最低", withDate(fmtPrice(stats.low), stats.lowDate)),
+          statRow("当前回撤", `<span class="negative">${fmtPct(stats.currentDrawdown)}</span>`),
+          statRow("上涨 / 下跌 / 平盘", `${stats.upDays} / ${stats.downDays} / ${stats.flatDays}`),
+          statRow("上涨概率", fmtPct(stats.winRate)),
+        ];
+
+        const risk = [
+          statRow("年化收益", `<span class="${colorClass(stats.annualReturn)}">${fmtPct(stats.annualReturn)}</span>`),
+          statRow("年化波动", fmtPct(stats.volatility)),
+          statRow("最大回撤", `<span class="negative">${fmtPct(stats.maxDrawdown)}</span>`),
+          statRow(
+            "回撤区间",
+            `<small>${fmtDate(stats.maxDrawdownPeakDate)} — ${fmtDate(stats.maxDrawdownTroughDate)}</small>`,
+          ),
+          statRow("夏普比率", fmtNum(stats.sharpe, 2)),
+          statRow("平均成交额", fmtCompact(stats.avgAmount, "元")),
+          statRow("累计成交额", fmtCompact(stats.totalAmount, "元")),
+          ...periodReturns.map((item) =>
+            statRow(`近 ${item.days} 日`, `<span class="${colorClass(item.value)}">${fmtPct(item.value)}</span>`),
+          ),
+        ];
+
+        const quote = [
+          statRow("开盘", fmtPrice(latest.open)),
+          statRow("最高", fmtPrice(latest.high)),
+          statRow("最低", fmtPrice(latest.low)),
+          statRow("收盘", fmtPrice(latest.close)),
+          statRow("成交量", fmtCompact(latest.volume, "份")),
+          statRow("成交额", fmtCompact(latest.amount, "元")),
+          statRow("MA5", fmtPrice(stats.ma5)),
+          statRow("MA20", fmtPrice(stats.ma20)),
+          statRow("MA60", fmtPrice(stats.ma60)),
+          statRow(
+            "最新交易日",
+            `${fmtDate(latest.date)}<small>${etf.code}</small>`,
+          ),
+        ];
+
+        document.getElementById("statsLayout").innerHTML = [
+          statCard("区间概览", overview),
+          statCard("风险收益", risk),
+          statCard("最新行情", quote),
+        ].join("");
+      }
+
+      async function loadData() {
+        const code = resolveCode(codeInput.value) || "510300.SH";
+        setBusy(loadButton, true, "载入中");
+        try {
+          const data = await api(
+            `/etfs/${encodeURIComponent(code)}?limit=${activeLimit}`,
+          );
+          current = data;
+          void loadIndexAnalytics(data.etf);
+          if (!data.klines.length) {
+            document.getElementById("klineChart").innerHTML = emptyState(
+              "该 ETF 暂无 K 线数据",
+            );
+            document.getElementById("statsLayout").innerHTML = emptyState(
+              "暂无统计可计算",
+            );
+            return;
+          }
+
+          codeInput.value = `${data.etf.code} · ${data.etf.name}`;
+          const params = new URLSearchParams(location.search);
+          params.set("code", data.etf.code);
+          params.set("limit", String(activeLimit));
+          history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
+
+          renderQuote(data);
+          renderChart(data.klines);
+          renderStats(data);
+        } catch (error) {
+          document.getElementById("etfMeta").textContent = `行情加载失败：${error.message}`;
+          document.getElementById("klineChart").innerHTML = emptyState(
+            "行情加载失败",
+            error.message,
+          );
+          document.getElementById("statsLayout").innerHTML = emptyState(
+            "暂无统计可计算",
+          );
+          toast(`行情加载失败：${error.message}`, "error");
+        } finally {
+          setBusy(loadButton, false);
+          refreshIcons();
+        }
+      }
+
+      document.getElementById("etfForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        loadData();
+      });
+
+      document.getElementById("rangeTabs").addEventListener("click", (event) => {
+        const button = event.target.closest(".range-tab");
+        if (!button) return;
+        setActiveRange(Number(button.dataset.limit));
+        loadData();
+      });
+
+      document.getElementById("valuationSummary").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-valuation-type]");
+        if (!button || button.dataset.valuationType === activeValuationType) return;
+        activeValuationType = button.dataset.valuationType;
+        document.querySelectorAll("[data-valuation-type]").forEach((item) => {
+          const active = item.dataset.valuationType === activeValuationType;
+          item.classList.toggle("is-active", active);
+          item.setAttribute("aria-pressed", String(active));
+        });
+        renderValuationChart(activeValuationType);
+      });
+
+      window.addEventListener("resize", () => {
+        klineChart?.resize();
+        valuationChart?.resize();
+        distributionChart?.resize();
+      });
+
+      async function init() {
+        const params = new URLSearchParams(location.search);
+        const requestedLimit = Number(params.get("limit"));
+        if (RANGE_LIMITS.includes(requestedLimit)) setActiveRange(requestedLimit);
+        if (params.get("code")) codeInput.value = params.get("code");
+
+        try {
+          await loadEtfOptions();
+        } catch (error) {
+          toast(`ETF 列表加载失败：${error.message}`, "error");
+        }
+        await loadData();
+        refreshIcons();
+      }
+
+      init();
+    </script>
+  </body>
+</html>
