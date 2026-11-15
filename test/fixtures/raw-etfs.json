@@ -1,0 +1,119 @@
+[
+  {
+    "securityName": "沪深300ETF华泰柏瑞",
+    "securityCode": "510300.SH",
+    "scale": 188245848179.1,
+    "trackingIndex": "沪深300",
+    "trackIndex": "000300.SH",
+    "premiumRate": "-0.24",
+    "amount": "3.4890357E9"
+  },
+  {
+    "securityName": "沪深300ETF易方达",
+    "securityCode": "159919.SZ",
+    "scale": 100000000000,
+    "trackingIndex": "沪深300",
+    "trackIndex": "000300.SH",
+    "premiumRate": "-0.20",
+    "amount": "2000000000"
+  },
+  {
+    "securityName": "科创50ETF华夏",
+    "securityCode": "588000.SH",
+    "scale": 145000000000,
+    "trackingIndex": "科创50",
+    "trackIndex": "000688.SH",
+    "premiumRate": "-0.07",
+    "amount": null
+  },
+  {
+    "securityName": "科创50ETF工银",
+    "securityCode": "588001.SH",
+    "scale": 145000000000,
+    "trackingIndex": "科创50",
+    "trackIndex": "000688.SH",
+    "premiumRate": "-0.05",
+    "amount": "20000000"
+  },
+  {
+    "securityName": "规模缺失ETF",
+    "securityCode": "510500.SH",
+    "scale": null,
+    "trackingIndex": "中证500",
+    "trackIndex": "000905.SH",
+    "premiumRate": "0",
+    "amount": "30000000"
+  },
+  {
+    "securityName": "上证50ETF华夏",
+    "securityCode": "510050.SH",
+    "scale": 400000000,
+    "trackingIndex": "上证50",
+    "trackIndex": "000016.SH",
+    "premiumRate": "0",
+    "amount": ""
+  },
+  {
+    "securityName": "零成交ETF",
+    "securityCode": "512001.SH",
+    "scale": 400000000,
+    "trackingIndex": "测试指数一",
+    "trackIndex": "000001.SH",
+    "premiumRate": "0",
+    "amount": "0"
+  },
+  {
+    "securityName": "成交额异常ETF",
+    "securityCode": "512002.SH",
+    "scale": 400000000,
+    "trackingIndex": "测试指数二",
+    "trackIndex": "000002.SH",
+    "premiumRate": "0",
+    "amount": "not-a-number"
+  },
+  {
+    "securityName": "国债ETF",
+    "securityCode": "512003.SH",
+    "scale": 1000000000,
+    "trackingIndex": "国债指数",
+    "trackIndex": "000012.SH",
+    "premiumRate": "0",
+    "amount": "50000000"
+  },
+  {
+    "securityName": "缺少指数ETF",
+    "securityCode": "512004.SH",
+    "scale": 1000000000,
+    "trackingIndex": "未知",
+    "trackIndex": null,
+    "premiumRate": "0",
+    "amount": "50000000"
+  },
+  {
+    "securityName": "缺少代码ETF",
+    "securityCode": null,
+    "scale": 1000000000,
+    "trackingIndex": "未知",
+    "trackIndex": "000099.SH",
+    "premiumRate": "0",
+    "amount": "50000000"
+  },
+  {
+    "securityName": null,
+    "securityCode": "512006.SH",
+    "scale": 1000000000,
+    "trackingIndex": "未知",
+    "trackIndex": "000006.SH",
+    "premiumRate": "0",
+    "amount": "50000000"
+  },
+  {
+    "securityName": "代码空格ETF",
+    "securityCode": " 512007.SH ",
+    "scale": 400000000,
+    "trackingIndex": "测试指数七",
+    "trackIndex": "000007.SH",
+    "premiumRate": "0",
+    "amount": "20000000"
+  }
+]

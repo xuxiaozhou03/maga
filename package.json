@@ -1,0 +1,48 @@
+{
+  "name": "maga",
+  "version": "0.5.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.19.0",
+  "scripts": {
+    "dev": "tsx watch src/server/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:source": "tsx scripts/verify-source.ts",
+    "data:init": "tsx scripts/init-data.ts",
+    "pool:refresh": "tsx scripts/refresh-pool.ts",
+    "valuations:refresh": "tsx scripts/refresh-valuations.ts",
+    "snapshot:verify": "tsx scripts/snapshot-verify.ts",
+    "system:recover": "tsx scripts/system-recover.ts",
+    "format": "prettier --write .",
+    "report:generate": "tsx scripts/generate-report.ts",
+    "data:backup": "tsx scripts/data-backup.ts",
+    "data:restore": "tsx scripts/data-restore.ts",
+    "system:check": "tsx scripts/system-check.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.8",
+    "@yiliang114/trading-day": "^3.3.1",
+    "citty": "^0.2.2",
+    "dayjs": "^1.11.23",
+    "echarts": "^5.6.0",
+    "hono": "^4.13.18",
+    "pino": "^10.4.0",
+    "proper-lockfile": "^4.1.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/proper-lockfile": "^4.1.4",
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "categories": [
+    {
+      "code": "broad_market",
+      "name": "宽基指数",
+      "children": [
+        { "code": "cn_core", "name": "A股核心宽基" },
+        { "code": "cn_small_mid", "name": "A股中小盘宽基" },
+        { "code": "us_broad", "name": "美股宽基" },
+        { "code": "hk_broad", "name": "港股宽基" }
+      ]
+    },
+    {
+      "code": "industry",
+      "name": "行业指数",
+      "children": [
+        { "code": "finance", "name": "金融" },
+        { "code": "healthcare", "name": "医药医疗" },
+        { "code": "food_beverage", "name": "食品饮料" },
+        { "code": "consumer_retail", "name": "消费零售" },
+        { "code": "tech_semiconductor", "name": "科技与半导体" },
+        { "code": "new_energy_power", "name": "新能源与电力设备" },
+        { "code": "advanced_manufacturing", "name": "高端制造" },
+        { "code": "defense", "name": "军工" },
+        { "code": "nonferrous_metals", "name": "有色金属" },
+        { "code": "coal_energy", "name": "煤炭与能源" },
+        { "code": "chemicals", "name": "化工" },
+        { "code": "real_estate_construction", "name": "房地产与建筑" },
+        { "code": "transportation", "name": "交通运输" },
+        { "code": "utilities_environment", "name": "公用事业与环保" },
+        { "code": "agriculture", "name": "农业" },
+        { "code": "other_industry", "name": "其他行业" }
+      ]
+    },
+    {
+      "code": "theme",
+      "name": "主题指数",
+      "children": [
+        { "code": "ai_computing", "name": "人工智能与算力" },
+        { "code": "robotics", "name": "机器人" },
+        { "code": "digital_economy", "name": "数字经济" },
+        { "code": "cloud_big_data", "name": "云计算与大数据" },
+        { "code": "internet", "name": "互联网" },
+        { "code": "low_altitude_economy", "name": "低空经济" },
+        { "code": "innovative_drugs", "name": "创新药" },
+        { "code": "soe_reform", "name": "国企改革与央企" },
+        { "code": "belt_and_road", "name": "一带一路" },
+        { "code": "other_theme", "name": "其他主题" }
+      ]
+    },
+    {
+      "code": "strategy",
+      "name": "策略指数",
+      "children": [
+        { "code": "dividend", "name": "红利" },
+        { "code": "low_volatility", "name": "低波动" },
+        { "code": "value", "name": "价值" },
+        { "code": "growth", "name": "成长" },
+        { "code": "quality", "name": "质量" },
+        { "code": "equal_weight", "name": "等权" },
+        { "code": "multi_factor", "name": "多因子" },
+        { "code": "other_strategy", "name": "其他策略" }
+      ]
+    },
+    {
+      "code": "commodity",
+      "name": "商品指数",
+      "children": [
+        { "code": "gold", "name": "黄金" },
+        { "code": "silver", "name": "白银" },
+        { "code": "nonferrous_commodity", "name": "有色金属商品" },
+        { "code": "energy_commodity", "name": "能源商品" },
+        { "code": "agricultural_commodity", "name": "农产品" },
+        { "code": "other_commodity", "name": "其他商品" }
+      ]
+    },
+    {
+      "code": "other_asset",
+      "name": "其他资产类别",
+      "children": [
+        { "code": "reits", "name": "REITs" },
+        { "code": "money_market_cash", "name": "货币及现金管理" },
+        { "code": "other_comprehensive", "name": "其他综合资产" }
+      ]
+    }
+  ]
+}

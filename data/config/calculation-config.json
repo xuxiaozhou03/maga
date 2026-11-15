@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "algorithmVersion": "0.5.1",
+  "annualizationDays": 252,
+  "riskFreeRateAnnual": 0,
+  "volatilityDdof": 0,
+  "klineLookbackRows": 1000,
+  "returnPeriods": [1, 5, 20, 60, 120, 250],
+  "movingAveragePeriods": [5, 10, 20, 60, 120],
+  "volatilityPeriods": [20, 60, 120],
+  "drawdownPeriods": [20, 60, 120, 250],
+  "historyPeriods": {
+    "1m": 21,
+    "3m": 63,
+    "6m": 126,
+    "1y": 250,
+    "2y": 500
+  },
+  "bollinger": {
+    "period": 20,
+    "standardDeviation": 2
+  },
+  "trendAlignment": {
+    "periods": [5, 10, 20, 60],
+    "requireCloseAboveShortest": true,
+    "strict": true
+  },
+  "valuationFreshness": {
+    "freshDays": 7,
+    "maxUsableDays": 30
+  },
+  "activity": {
+    "minAmountSampleRatio": 0.8
+  },
+  "ranking": {
+    "minSample": 5,
+    "tieTolerance": 1e-12,
+    "overall": {
+      "enabled": false,
+      "weights": {}
+    }
+  },
+  "distributionBins": {
+    "return1d": [-1, -0.03, -0.01, 0, 0.01, 0.03, 1],
+    "return20d": [-1, -0.1, -0.05, 0, 0.05, 0.1, 1],
+    "volatility": [0, 0.1, 0.2, 0.3, 0.4, 1],
+    "drawdown": [-1, -0.2, -0.1, -0.05, 0]
+  },
+  "marketState": {
+    "strongPositiveRatio": 0.65,
+    "weakPositiveRatio": 0.35,
+    "strongMedianReturn20d": 0.02,
+    "weakMedianReturn20d": -0.02,
+    "strongAboveMa20Ratio": 0.6,
+    "weakAboveMa20Ratio": 0.3,
+    "highVolatility20d": 0.28,
+    "riskRisingPositiveRatioMax": 0.45,
+    "highDrawdown60d": -0.15,
+    "highRiskScore": 0.7,
+    "highDispersion20d": 0.1,
+    "dispersionPositiveRatioMin": 0.4,
+    "dispersionPositiveRatioMax": 0.6,
+    "activityImprovement": 0.2,
+    "activityPositiveRatioMin": 0.5,
+    "riskConcentrationRatio": 0.4
+  }
+}

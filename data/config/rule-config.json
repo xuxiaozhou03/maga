@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "ruleVersion": "1",
+  "rules": [
+    {
+      "code": "etf_return20d_top20",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "20日收益排名位于前20%",
+      "params": { "minPercentile": 0.8 }
+    },
+    {
+      "code": "etf_return60d_top20",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "60日收益排名位于前20%",
+      "params": { "minPercentile": 0.8 }
+    },
+    {
+      "code": "etf_bullish_alignment",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "均线多头排列",
+      "params": {}
+    },
+    {
+      "code": "etf_ma20_overextended",
+      "enabled": true,
+      "level": "etf",
+      "severity": "warning",
+      "maxFindings": 50,
+      "description": "价格偏离MA20过大",
+      "params": { "ma20DeviationThreshold": 0.08 }
+    },
+    {
+      "code": "etf_volatility_spike",
+      "enabled": true,
+      "level": "etf",
+      "severity": "warning",
+      "maxFindings": 50,
+      "description": "短期波动率明显上升",
+      "params": {
+        "volatility20dThreshold": 0.3,
+        "volatility20dTo60dRatio": 1.3
+      }
+    },
+    {
+      "code": "etf_drawdown_warning",
+      "enabled": true,
+      "level": "etf",
+      "severity": "warning",
+      "maxFindings": 50,
+      "description": "当前回撤较大",
+      "params": {
+        "currentDrawdownThreshold": -0.1,
+        "maxDrawdown60dThreshold": -0.15
+      }
+    },
+    {
+      "code": "etf_amount_expansion",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "成交额明显放大",
+      "params": {
+        "amountRatio20dThreshold": 0.5,
+        "minAverageAmount20d": 10000000
+      }
+    },
+    {
+      "code": "etf_pe_low",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "PE位于历史低位",
+      "params": { "maxPercentile": 0.2, "maxLagDays": 30 }
+    },
+    {
+      "code": "etf_pb_low",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "PB位于历史低位",
+      "params": { "maxPercentile": 0.2, "maxLagDays": 30 }
+    },
+    {
+      "code": "etf_ps_low",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "PS位于历史低位",
+      "params": { "maxPercentile": 0.2, "maxLagDays": 30 }
+    },
+    {
+      "code": "etf_trend_improving",
+      "enabled": true,
+      "level": "etf",
+      "severity": "info",
+      "maxFindings": 50,
+      "description": "趋势相对上一快照改善",
+      "params": { "minScoreDelta": 2, "minCurrentScore": 4 }
+    },
+    {
+      "code": "market_breadth_strong",
+      "enabled": true,
+      "level": "market",
+      "severity": "info",
+      "maxFindings": 10,
+      "description": "市场上涨比例较高",
+      "params": { "positiveRatio1dMin": 0.65 }
+    },
+    {
+      "code": "market_breadth_weak",
+      "enabled": true,
+      "level": "market",
+      "severity": "warning",
+      "maxFindings": 10,
+      "description": "市场下跌比例较高",
+      "params": { "positiveRatio1dMax": 0.35 }
+    },
+    {
+      "code": "market_dispersion_high",
+      "enabled": true,
+      "level": "market",
+      "severity": "info",
+      "maxFindings": 10,
+      "description": "市场收益分化扩大",
+      "params": { "p90P10SpreadMin": 0.1 }
+    },
+    {
+      "code": "market_volatility_rising",
+      "enabled": true,
+      "level": "market",
+      "severity": "warning",
+      "maxFindings": 10,
+      "description": "市场波动率上升",
+      "params": { "meanVolatility20dMin": 0.28 }
+    },
+    {
+      "code": "market_activity_improving",
+      "enabled": true,
+      "level": "market",
+      "severity": "info",
+      "maxFindings": 10,
+      "description": "市场成交活跃度提高",
+      "params": {
+        "meanAmountRatio20dMin": 0.2,
+        "positiveRatio1dMin": 0.5
+      }
+    },
+    {
+      "code": "market_trend_improving",
+      "enabled": true,
+      "level": "market",
+      "severity": "info",
+      "maxFindings": 10,
+      "description": "市场趋势结构改善",
+      "params": {
+        "aboveMa20RatioMin": 0.6,
+        "bullishRatioMin": 0.4
+      }
+    },
+    {
+      "code": "market_risk_concentration",
+      "enabled": true,
+      "level": "market",
+      "severity": "warning",
+      "maxFindings": 10,
+      "description": "高风险ETF集中",
+      "params": { "highRiskRatioMin": 0.4 }
+    },
+    {
+      "code": "market_drawdown_pressure",
+      "enabled": true,
+      "level": "market",
+      "severity": "warning",
+      "maxFindings": 10,
+      "description": "市场回撤压力较大",
+      "params": {
+        "meanMaxDrawdown60dMax": -0.15,
+        "highDrawdownRatioMin": 0.3
+      }
+    },
+    {
+      "code": "market_valuation_low",
+      "enabled": true,
+      "level": "market",
+      "severity": "info",
+      "maxFindings": 10,
+      "description": "PE中位百分位偏低",
+      "params": { "maxMedianPercentile": 0.3, "minValidCount": 20 }
+    },
+    {
+      "code": "market_valuation_high",
+      "enabled": true,
+      "level": "market",
+      "severity": "info",
+      "maxFindings": 10,
+      "description": "PE中位百分位偏高",
+      "params": { "minMedianPercentile": 0.8, "minValidCount": 20 }
+    }
+  ]
+}

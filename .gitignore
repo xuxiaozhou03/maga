@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.DS_Store
+data/master/
+data/valuation/
+data/snapshots/
+data/reports/
+data/cache/
+data/system/current.json
+data/system/snapshot-index.json
+data/system/selection/
+data/system/tasks/
+data/system/locks/
+data/system/restore-backups/
+data/temp/

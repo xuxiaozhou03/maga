@@ -1,0 +1,20 @@
+{
+  "code": "200",
+  "msg": "成功.",
+  "data": {
+    "items": [
+      {
+        "tradeDate": "20261113",
+        "valuationValue": 13.4199,
+        "historicalPercentile": 73.76,
+        "peg": -40.9339
+      },
+      {
+        "tradeDate": "20261112",
+        "valuationValue": 13.3968,
+        "historicalPercentile": 73.51,
+        "peg": -37.6224
+      }
+    ]
+  }
+}

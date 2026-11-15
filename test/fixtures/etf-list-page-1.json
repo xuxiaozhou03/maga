@@ -1,0 +1,29 @@
+{
+  "code": "200",
+  "msg": "成功.",
+  "data": {
+    "total": 3,
+    "pageNo": 1,
+    "pageSize": 2,
+    "data": [
+      {
+        "securityName": "沪深300ETF华泰柏瑞",
+        "securityCode": "510300.SH",
+        "scale": 188245848179.1,
+        "trackingIndex": "沪深300",
+        "trackIndex": "000300.SH",
+        "premiumRate": "-0.24",
+        "amount": "3.4890357E9"
+      },
+      {
+        "securityName": "科创50ETF华夏",
+        "securityCode": "588000.SH",
+        "scale": 145463832742.8,
+        "trackingIndex": "科创50",
+        "trackIndex": "000688.SH",
+        "premiumRate": "-0.07",
+        "amount": "1.13875233E10"
+      }
+    ]
+  }
+}

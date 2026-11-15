@@ -1,0 +1,20 @@
+{
+  "code": "200",
+  "msg": "成功.",
+  "data": {
+    "total": 3,
+    "pageNo": 2,
+    "pageSize": 2,
+    "data": [
+      {
+        "securityName": "创业板ETF易方达",
+        "securityCode": "159915.SZ",
+        "scale": 100000000000,
+        "trackingIndex": "创业板指",
+        "trackIndex": "399006.SZ",
+        "premiumRate": "0",
+        "amount": "1000000000"
+      }
+    ]
+  }
+}
