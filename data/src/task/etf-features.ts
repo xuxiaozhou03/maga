@@ -1,7 +1,7 @@
 import { etfsData } from "../data";
-import { Etf } from "../fetch/etfs";
 import { fetchKline } from "../fetch/klines";
 import { fetchIndexValuation } from "../fetch/valuation";
+import { Etf } from "../type";
 import { calculateEtfFeatures } from "../utils/calculateEtfFeatures";
 import { saveToFile } from "../utils/file";
 

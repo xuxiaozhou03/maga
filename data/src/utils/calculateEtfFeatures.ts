@@ -11,9 +11,9 @@
  * - amount / volume / scale：保留上游单位
  */
 
-import { Etf } from "../fetch/etfs";
 import { Kline } from "../fetch/klines";
 import { Valuation } from "../fetch/valuation";
+import { Etf } from "../type";
 
 // ==================================================
 // 1. 返回类型定义
@@ -100,12 +100,7 @@ export interface ValuationFeatures {
 }
 
 export interface EtfFeatures {
-  code: string;
-  name: string;
-  trackingIndex: string;
-  trackIndex: string;
-  scale: number;
-  premiumRate: number | null;
+  etf: Etf;
 
   data: {
     latestDate: number | null;
@@ -791,12 +786,7 @@ function calculateValuationFeatures(
 
 function createEmptyEtfFeatures(etf: Etf): EtfFeatures {
   return {
-    code: etf.code,
-    name: etf.name,
-    trackingIndex: etf.trackingIndex,
-    trackIndex: etf.trackIndex,
-    scale: etf.scale,
-    premiumRate: etf.premiumRate ?? null,
+    etf,
 
     data: {
       latestDate: null,
@@ -892,12 +882,7 @@ export function calculateEtfFeatures(
   const monthlyKlines = aggregateKlines(data, "monthly");
 
   return {
-    code: etf.code,
-    name: etf.name,
-    trackingIndex: etf.trackingIndex,
-    trackIndex: etf.trackIndex,
-    scale: etf.scale,
-    premiumRate: etf.premiumRate ?? null,
+    etf,
 
     data: {
       latestDate: latest.date,

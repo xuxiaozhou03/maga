@@ -47,6 +47,9 @@ const fetchPageKline = async (code: string, begin: number, count = 1000) => {
     };
   };
   const columns = ret.data.columns.split(",");
+  if (!ret.data.items) {
+    return [];
+  }
   const items = ret.data.items.split(";").map((item) => {
     const values = item.split(",");
     return columns.reduce(
@@ -54,6 +57,7 @@ const fetchPageKline = async (code: string, begin: number, count = 1000) => {
         if (column === "week") {
           return acc;
         }
+
         const value = values[index];
         if (column === "tradeDate") {
           acc.date = Number(value.replace(/-/g, ""));

@@ -1,6 +1,7 @@
 import { etfsData } from "../data";
-import { Etf, fetchOriginalEtfs } from "../fetch/etfs";
+import { fetchOriginalEtfs } from "../fetch/etfs";
 import { fetchLinkFund } from "../fetch/linkFund";
+import { Etf } from "../type";
 import { classifyEtfs } from "./etf-categories";
 
 export const runEtfListTask = async () => {
@@ -10,7 +11,7 @@ export const runEtfListTask = async () => {
       ...acc,
       [item.code]: item,
     }),
-    {} as Record<string, Etf>,
+    {} as Record<string, Omit<Etf, "category">>,
   );
   const codes = Object.keys(map);
   const linkFunds = await Promise.all(

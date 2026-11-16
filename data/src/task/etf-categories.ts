@@ -1,9 +1,9 @@
-import { Etf } from "../fetch/etfs";
+import { Etf } from "../type";
 
 /**
  * ETF 匹配文本。
  */
-function getEtfText(etf: Etf): string {
+function getEtfText(etf: Omit<Etf, "category">): string {
   const extra = etf as Etf & { trackIndex?: string };
 
   return [etf.name, etf.trackingIndex, extra.trackIndex]
@@ -452,14 +452,10 @@ export type EtfCategory = (typeof ETF_CATEGORIES)[number]["id"];
 
 export type EtfCategoryName = (typeof ETF_CATEGORIES)[number]["name"];
 
-export interface ClassifiedEtf extends Etf {
-  category: EtfCategoryName;
-}
-
 /**
  * 获取 ETF 分类。
  */
-export function getEtfCategory(etf: Etf): EtfCategory {
+export function getEtfCategory(etf: Omit<Etf, "category">): EtfCategory {
   const text = getEtfText(etf);
 
   return ETF_CATEGORIES.find((item) => item.match(text))!.id;
@@ -472,7 +468,7 @@ export function getEtfCategory(etf: Etf): EtfCategory {
  * 2. 同一分类按规模降序排列。
  * 3. 规模相同保持原始顺序。
  */
-export function classifyEtfs(etfs: Etf[]): ClassifiedEtf[] {
+export function classifyEtfs(etfs: Omit<Etf, "category">[]): Etf[] {
   const categoryOrder = new Map(
     ETF_CATEGORIES.map((item, index) => [item.id, index]),
   );

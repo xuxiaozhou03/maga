@@ -1,3 +1,5 @@
+import { Etf } from "../type";
+
 interface OriginalEtf {
   securityName: string;
   securityCode: string;
@@ -7,16 +9,6 @@ interface OriginalEtf {
   premiumRate: string | number | null;
 
   amount: string;
-}
-
-export interface Etf {
-  code: string;
-  name: string;
-  trackingIndex: string;
-  trackIndex: string;
-  scale: number;
-  /// 溢价率（百分数，例如 0.02 表示 0.02%）；上游可能为空
-  premiumRate?: number | null;
 }
 
 export const magaCodes = [
@@ -52,7 +44,7 @@ export async function fetchOriginalEtfs() {
     data: { data: OriginalEtf[] };
   };
 
-  const map: Record<string, Etf> = {};
+  const map: Record<string, Omit<Etf, "category">> = {};
   res.data.data.forEach(
     ({
       securityCode,

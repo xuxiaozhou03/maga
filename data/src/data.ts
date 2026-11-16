@@ -16,7 +16,7 @@ export const etfsData = {
   },
   get() {
     const data = getToCsv("etfs.csv", etfFields);
-    return data.map((item) => {
+    return data.slice(1).map((item) => {
       const res: ClassifiedEtf = {
         category: item.category,
         name: item.name,

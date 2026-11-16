@@ -57,15 +57,17 @@ export async function fetchIndexValuation(
     return [];
   }
 
-  return res.data.items.map((item) => ({
-    code: securityCode,
-    type: valuationType as Valuation["type"],
-    date: Number(item.tradeDate),
-    value: item.valuationValue,
-    percent:
-      item.historicalPercentile > 1
-        ? item.historicalPercentile / 100
-        : item.historicalPercentile,
-    peg: item.peg,
-  }));
+  return (
+    res.data?.items?.map((item) => ({
+      code: securityCode,
+      type: valuationType as Valuation["type"],
+      date: Number(item.tradeDate),
+      value: item.valuationValue,
+      percent:
+        item.historicalPercentile > 1
+          ? item.historicalPercentile / 100
+          : item.historicalPercentile,
+      peg: item.peg,
+    })) ?? []
+  );
 }
