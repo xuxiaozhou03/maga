@@ -7,9 +7,13 @@ export const saveToFile = (filename: string, data: string) => {
   fs.writeFileSync(path.resolve(dataDir, filename), data);
 };
 export const getToFile = (filename: string) => {
-  return fs.readFileSync(path.resolve(dataDir, filename), {
-    encoding: "utf-8",
-  });
+  try {
+    return fs.readFileSync(path.resolve(dataDir, filename), {
+      encoding: "utf-8",
+    });
+  } catch {
+    return "";
+  }
 };
 
 export const saveToCsv = (
