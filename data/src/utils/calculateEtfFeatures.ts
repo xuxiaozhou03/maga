@@ -1,177 +1,325 @@
 /**
- * ETF 单只特征计算 V1
+ * etfFeatures.ts
  *
- * 输入类型：Etf、Kline、Valuation（使用项目已有定义）
+ * ETF 日度特征计算
  *
- * 单位约定：
- * - premiumRate：百分数，例如 -0.24 表示 -0.24%
- * - changePercent：百分数，例如 -1.5 表示 -1.5%
- * - Valuation.percent：0～1，例如 0.7376 表示 73.76%
- * - returns / volatility / drawdown / deviation：小数
- * - amount / volume / scale：保留上游单位
+ * 输入：
+ *   etf: Etf
+ *   klines: Kline[]
+ *   valuations: Valuation[]
+ *
+ * 输出：
+ *   EtfFeatures
  */
 
 import { Kline } from "../fetch/klines";
 import { Valuation } from "../fetch/valuation";
 import { Etf } from "../type";
 
-// ==================================================
-// 1. 返回类型定义
-// ==================================================
+// ============================================================
+// 1. 基础类型
+// ============================================================
 
-export type ReturnPeriod =
-  | "d1"
-  | "d5"
-  | "d20"
-  | "d60"
-  | "d120"
-  | "d250"
-  | "ytd";
+export type Nullable<T> = T | null;
 
-export type StatisticsPeriod = "1m" | "3m" | "6m" | "ytd" | "1y" | "2y";
+export type Trend = "rising" | "falling" | "flat" | "unknown";
 
-export type ValuationType = "PE" | "PB" | "PS";
+export type AnalysisStatus =
+  | "very_low"
+  | "low"
+  | "neutral"
+  | "high"
+  | "very_high"
+  | "unknown";
 
-export interface MovingAverages {
-  ma5: number | null;
-  ma10: number | null;
-  ma20: number | null;
-  ma60: number | null;
-  ma120: number | null;
-  ma250: number | null;
+export interface Metric<T, A = null> {
+  value: T;
+  analysis: A;
 }
 
-export interface BollingerBands {
-  upper: number | null;
-  middle: number | null;
-  lower: number | null;
-  bandwidth: number | null;
-  position: number | null;
+// ============================================================
+// 2. 数据与行情
+// ============================================================
+
+export interface DataFeatures {
+  latestDate: number;
+  earliestDate: number;
+  totalTradingDays: number;
 }
 
-export interface PeriodStatistics {
-  /** 区间第一交易日 */
+export interface MarketFeatures {
+  close: number;
+  change: number;
+  changePercent: number;
+
+  high: number;
+  low: number;
+
+  volume: number;
+  amount: number;
+}
+
+// ============================================================
+// 3. 多周期表现
+// ============================================================
+
+export type PerformancePeriod =
+  | "1w"
+  | "1m"
+  | "3m"
+  | "6m"
+  | "ytd"
+  | "1y"
+  | "3y"
+  | "5y";
+
+export interface PeriodPerformance {
   startDate: number | null;
-  /** 最新交易日 */
   endDate: number | null;
-  /** 区间收益率样本数 */
   tradingDays: number;
-  totalReturn: number | null;
-  annualizedReturn: number | null;
-  dailyReturnMean: number | null;
-  dailyReturnMedian: number | null;
-  dailyReturnStdDev: number | null;
+
+  // 收益
+  totalReturn: Metric<Nullable<number>, string>;
+  annualizedReturn: Metric<Nullable<number>, string>;
+  dailyReturnMean: Metric<Nullable<number>, string>;
+  dailyReturnMedian: Metric<Nullable<number>, string>;
+
+  // 风险
+  volatility: Metric<Nullable<number>, string>;
+  maxDrawdown: Metric<Nullable<number>, string>;
+
+  // 涨跌统计
   upDays: number;
   downDays: number;
+  flatDays: number;
   upDayRatio: number | null;
-  maxDrawdown: number | null;
+  downDayRatio: number | null;
+
+  // 连续涨跌
+  maxConsecutiveUpDays: number;
+  maxConsecutiveDownDays: number;
+  currentConsecutiveUpDays: number;
+  currentConsecutiveDownDays: number;
+
+  // 涨跌幅度
+  averageUpReturn: number | null;
+  averageDownReturn: number | null;
+  largestDailyGain: number | null;
+  largestDailyLoss: number | null;
+  gainLossRatio: number | null;
+
+  // 流动性
+  averageAmount: number | null;
+  medianAmount: number | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+  amountStdDev: number | null;
+  amountChange: number | null;
+  activeDays: number;
+  activeDayRatio: number | null;
 }
 
-export interface RiskFeatures {
-  volatility20: number | null;
-  volatility60: number | null;
-  volatility120: number | null;
-  maxDrawdown20: number | null;
-  maxDrawdown60: number | null;
-  maxDrawdown120: number | null;
-  maxDrawdown250: number | null;
+export type PerformanceFeatures = Record<PerformancePeriod, PeriodPerformance>;
+
+// ============================================================
+// 4. 均线
+// ============================================================
+
+export type MAAlignment = "bullish" | "bearish" | "mixed" | "unknown";
+
+export type MACross = "golden" | "death" | "none" | "unknown";
+
+export interface MAAnalysis {
+  trend: Trend;
+  pricePosition: "above" | "below" | "unknown";
 }
 
-export interface VolumeFeatures {
-  latestAmount: number | null;
-  averageAmount5: number | null;
-  averageAmount20: number | null;
-  amountRatio20: number | null;
-  amountChange20: number | null;
+export interface MovingAverages {
+  ma5: Metric<Nullable<number>, MAAnalysis>;
+  ma10: Metric<Nullable<number>, MAAnalysis>;
+  ma20: Metric<Nullable<number>, MAAnalysis>;
+  ma60: Metric<Nullable<number>, MAAnalysis>;
+  ma120: Metric<Nullable<number>, MAAnalysis>;
+  ma250: Metric<Nullable<number>, MAAnalysis>;
+
+  analysis: {
+    alignment: MAAlignment;
+    cross: {
+      ma5Ma20: MACross;
+      ma10Ma60: MACross;
+    };
+    dispersion: number | null;
+  };
 }
 
-export interface ValuationFeature {
-  value: number | null;
+// ============================================================
+// 5. 均线偏离
+// ============================================================
+
+export type DeviationStatus =
+  | "deeply_below"
+  | "below"
+  | "near"
+  | "above"
+  | "deeply_above"
+  | "unknown";
+
+export interface MADeviation {
+  ma5: Metric<Nullable<number>, DeviationStatus>;
+  ma10: Metric<Nullable<number>, DeviationStatus>;
+  ma20: Metric<Nullable<number>, DeviationStatus>;
+  ma60: Metric<Nullable<number>, DeviationStatus>;
+  ma120: Metric<Nullable<number>, DeviationStatus>;
+  ma250: Metric<Nullable<number>, DeviationStatus>;
+}
+
+// ============================================================
+// 6. 布林带
+// ============================================================
+
+export interface BollingerBands {
+  upper: Metric<Nullable<number>>;
+  middle: Metric<Nullable<number>>;
+  lower: Metric<Nullable<number>>;
+  bandwidth: Metric<Nullable<number>>;
+  percentB: Metric<Nullable<number>>;
+}
+
+export type BollingerPosition =
+  | "above_upper"
+  | "upper_half"
+  | "lower_half"
+  | "below_lower"
+  | "unknown";
+
+export type BandwidthTrend = "expanding" | "contracting" | "stable" | "unknown";
+
+export type BollingerSignal =
+  | "breakout_upper"
+  | "breakout_lower"
+  | "cross_above_middle"
+  | "cross_below_middle"
+  | "none"
+  | "unknown";
+
+export interface BollingerAnalysis {
+  position: BollingerPosition;
+  bandwidthTrend: BandwidthTrend;
+  squeeze: boolean | null;
+  priceSignal: BollingerSignal;
+  middleTrend: Trend;
+}
+
+export interface BollingerPeriod {
+  value: BollingerBands;
+  analysis: BollingerAnalysis;
+}
+
+export interface BollingerFeatures {
+  daily: BollingerPeriod;
+  weekly: BollingerPeriod;
+  monthly: BollingerPeriod;
+}
+
+// ============================================================
+// 7. 估值
+// ============================================================
+
+export type ValuationPeriod = "1y" | "3y" | "5y" | "all";
+
+export interface ValuationHistory {
+  min: number | null;
+  max: number | null;
+  mean: number | null;
+  median: number | null;
+  stdDev: number | null;
+
   percentile: number | null;
+  deviation: number | null;
+  zScore: number | null;
+}
+
+export interface ValuationAnalysis {
+  status: AnalysisStatus;
+  history: Record<ValuationPeriod, ValuationHistory>;
+}
+
+export interface SingleValuationFeature {
+  value: number | null;
+  analysis: ValuationAnalysis;
+
   peg: number | null;
   date: number | null;
   delayDays: number | null;
 }
 
 export interface ValuationFeatures {
-  PE: ValuationFeature;
-  PB: ValuationFeature;
-  PS: ValuationFeature;
+  PE: SingleValuationFeature;
+  PB: SingleValuationFeature;
+  PS: SingleValuationFeature;
 }
+
+// ============================================================
+// 8. 最终结果
+// ============================================================
 
 export interface EtfFeatures {
   etf: Etf;
+  data: DataFeatures;
+  market: MarketFeatures;
 
-  data: {
-    latestDate: number | null;
-    earliestDate: number | null;
-    totalTradingDays: number;
-  };
-
-  market: {
-    close: number | null;
-    change: number | null;
-    changePercent: number | null;
-    high: number | null;
-    low: number | null;
-    volume: number | null;
-    amount: number | null;
-  };
-
-  returns: Record<ReturnPeriod, number | null>;
-  statistics: Record<StatisticsPeriod, PeriodStatistics>;
+  performance: PerformanceFeatures;
 
   movingAverages: MovingAverages;
-  maDeviation: MovingAverages;
+  maDeviation: MADeviation;
+  bollinger: BollingerFeatures;
 
-  bollinger: {
-    daily: BollingerBands;
-    weekly: BollingerBands;
-    monthly: BollingerBands;
-  };
-
-  risk: RiskFeatures;
-  volume: VolumeFeatures;
   valuation: ValuationFeatures;
 }
 
-// ==================================================
-// 2. 常量和通用函数
-// ==================================================
+// ============================================================
+// 9. 常量
+// ============================================================
 
 const TRADING_DAYS_PER_YEAR = 250;
+const BOLLINGER_PERIOD = 20;
+const BOLLINGER_MULTIPLIER = 2;
 
 const MA_PERIODS = [5, 10, 20, 60, 120, 250] as const;
 
-const EMPTY_MA: MovingAverages = {
-  ma5: null,
-  ma10: null,
-  ma20: null,
-  ma60: null,
-  ma120: null,
-  ma250: null,
-};
+const PERFORMANCE_PERIODS: PerformancePeriod[] = [
+  "1w",
+  "1m",
+  "3m",
+  "6m",
+  "ytd",
+  "1y",
+  "3y",
+  "5y",
+];
 
-const EMPTY_BOLL: BollingerBands = {
-  upper: null,
-  middle: null,
-  lower: null,
-  bandwidth: null,
-  position: null,
-};
+const VALUATION_PERIODS: ValuationPeriod[] = ["1y", "3y", "5y", "all"];
 
-function isValidNumber(value: unknown): value is number {
+// ============================================================
+// 10. 通用工具
+// ============================================================
+
+function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function round(value: number, digits = 8): number {
-  if (!Number.isFinite(value)) return 0;
+function round(value: number, digits = 6): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
 }
 
+function metric<T, A = null>(value: T, analysis: A = null as A): Metric<T, A> {
+  return { value, analysis };
+}
+
 function mean(values: number[]): number | null {
   if (!values.length) return null;
+
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
@@ -181,16 +329,21 @@ function median(values: number[]): number | null {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
 
-  return sorted.length % 2
-    ? sorted[middle]
-    : (sorted[middle - 1] + sorted[middle]) / 2;
+  if (sorted.length % 2 === 0) {
+    return (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  return sorted[middle];
 }
 
-/** 样本标准差 */
-function sampleStdDev(values: number[]): number | null {
+/**
+ * 样本标准差
+ */
+function standardDeviation(values: number[]): number | null {
   if (values.length < 2) return null;
 
   const avg = mean(values)!;
+
   const variance =
     values.reduce((sum, value) => sum + (value - avg) ** 2, 0) /
     (values.length - 1);
@@ -198,15 +351,12 @@ function sampleStdDev(values: number[]): number | null {
   return Math.sqrt(variance);
 }
 
-/** 总体标准差 */
-function populationStdDev(values: number[]): number | null {
-  if (!values.length) return null;
+function min(values: number[]): number | null {
+  return values.length ? Math.min(...values) : null;
+}
 
-  const avg = mean(values)!;
-  const variance =
-    values.reduce((sum, value) => sum + (value - avg) ** 2, 0) / values.length;
-
-  return Math.sqrt(variance);
+function max(values: number[]): number | null {
+  return values.length ? Math.max(...values) : null;
 }
 
 function toDate(date: number): Date {
@@ -225,507 +375,1026 @@ function toDateNumber(date: Date): number {
   );
 }
 
-function isValidDateNumber(date: number): boolean {
-  if (!Number.isInteger(date)) return false;
-
-  const parsed = toDate(date);
-  return toDateNumber(parsed) === date;
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
 }
 
-function daysBetween(start: number, end: number): number {
-  return Math.floor(
-    (toDate(end).getTime() - toDate(start).getTime()) / 86400000,
-  );
+function subtractPeriod(date: Date, period: PerformancePeriod): Date {
+  const result = new Date(date);
+
+  switch (period) {
+    case "1w":
+      result.setUTCDate(result.getUTCDate() - 7);
+      break;
+    case "1m":
+      result.setUTCMonth(result.getUTCMonth() - 1);
+      break;
+    case "3m":
+      result.setUTCMonth(result.getUTCMonth() - 3);
+      break;
+    case "6m":
+      result.setUTCMonth(result.getUTCMonth() - 6);
+      break;
+    case "1y":
+      result.setUTCFullYear(result.getUTCFullYear() - 1);
+      break;
+    case "3y":
+      result.setUTCFullYear(result.getUTCFullYear() - 3);
+      break;
+    case "5y":
+      result.setUTCFullYear(result.getUTCFullYear() - 5);
+      break;
+    case "ytd":
+      return new Date(Date.UTC(result.getUTCFullYear(), 0, 1));
+  }
+
+  return result;
 }
 
-function subtractMonths(date: number, months: number): number {
-  const source = toDate(date);
-
-  const year = source.getUTCFullYear();
-  const month = source.getUTCMonth();
-  const day = source.getUTCDate();
-
-  const target = new Date(Date.UTC(year, month - months, 1));
-
-  const lastDay = new Date(
-    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
-  ).getUTCDate();
-
-  target.setUTCDate(Math.min(day, lastDay));
-
-  return toDateNumber(target);
+function dateDiffDays(from: number, to: number): number {
+  const diff = toDate(to).getTime() - toDate(from).getTime();
+  return Math.max(0, Math.floor(diff / 86400000));
 }
 
-// ==================================================
-// 3. K线清洗
-// ==================================================
-
-/**
- * 只保留当前 ETF 的有效日K。
- * 同日期重复时保留输入数组中最后一条有效记录。
- */
-function normalizeKlines(etfCode: string, klines: Kline[]): Kline[] {
+function sortKlines(klines: Kline[]): Kline[] {
   const map = new Map<number, Kline>();
 
   for (const item of klines) {
-    if (item.code !== etfCode) continue;
-    if (!isValidDateNumber(item.date)) continue;
-
     if (
-      !isValidNumber(item.open) ||
-      !isValidNumber(item.high) ||
-      !isValidNumber(item.low) ||
-      !isValidNumber(item.close)
+      !Number.isInteger(item.date) ||
+      !isFiniteNumber(item.close) ||
+      item.close <= 0
     ) {
       continue;
     }
 
-    if (
-      item.open <= 0 ||
-      item.high <= 0 ||
-      item.low <= 0 ||
-      item.close <= 0 ||
-      item.high < item.low
-    ) {
-      continue;
-    }
-
-    map.set(item.date, { ...item });
+    map.set(item.date, item);
   }
 
   return [...map.values()].sort((a, b) => a.date - b.date);
 }
 
-function getDailyReturns(klines: Kline[]): number[] {
-  const result: number[] = [];
+function sortValuations(valuations: Valuation[]): Valuation[] {
+  return [...valuations]
+    .filter((item) => Number.isInteger(item.date) && isFiniteNumber(item.value))
+    .sort((a, b) => a.date - b.date);
+}
 
-  for (let i = 1; i < klines.length; i++) {
-    const previous = klines[i - 1].close;
-    const current = klines[i].close;
+// ============================================================
+// 11. 行情计算
+// ============================================================
 
-    if (previous <= 0) continue;
-    result.push(current / previous - 1);
+function calculateDataFeatures(klines: Kline[]): DataFeatures {
+  return {
+    latestDate: klines.at(-1)?.date ?? 0,
+    earliestDate: klines[0]?.date ?? 0,
+    totalTradingDays: klines.length,
+  };
+}
+
+function calculateMarketFeatures(latest: Kline | undefined): MarketFeatures {
+  return {
+    close: latest?.close!,
+    change: latest?.change!,
+    changePercent: latest ? latest.changePercent / 100 : 0,
+
+    high: latest?.high!,
+    low: latest?.low!,
+
+    volume: latest?.volume!,
+    amount: latest?.amount!,
+  };
+}
+
+// ============================================================
+// 12. 多周期表现计算
+// ============================================================
+
+function calculateConsecutiveDays(
+  returns: number[],
+  direction: "up" | "down",
+): {
+  max: number;
+  current: number;
+} {
+  let maxCount = 0;
+  let currentCount = 0;
+  let count = 0;
+
+  for (const value of returns) {
+    const matched = direction === "up" ? value > 0 : value < 0;
+
+    if (matched) {
+      count++;
+      maxCount = Math.max(maxCount, count);
+    } else {
+      count = 0;
+    }
   }
 
-  return result;
+  for (let i = returns.length - 1; i >= 0; i--) {
+    const matched = direction === "up" ? returns[i] > 0 : returns[i] < 0;
+
+    if (!matched) break;
+    currentCount++;
+  }
+
+  return {
+    max: maxCount,
+    current: currentCount,
+  };
 }
 
-// ==================================================
-// 4. 收益率
-// ==================================================
+function calculateMaxDrawdown(prices: number[]): number | null {
+  if (prices.length < 2) return null;
 
-/** 最近 N 个交易日收益，需要 N+1 根日K */
-function calculateReturn(klines: Kline[], period: number): number | null {
-  if (klines.length < period + 1) return null;
+  let peak = prices[0];
+  let maxDrawdown = 0;
 
-  const latest = klines[klines.length - 1];
-  const base = klines[klines.length - 1 - period];
+  for (const price of prices) {
+    peak = Math.max(peak, price);
 
-  return round(latest.close / base.close - 1);
+    if (peak > 0) {
+      const drawdown = price / peak - 1;
+      maxDrawdown = Math.min(maxDrawdown, drawdown);
+    }
+  }
+
+  return maxDrawdown;
 }
 
-/**
- * 根据自然日期计算区间收益。
- *
- * 使用目标日期之前最近一个交易日的收盘价作为基准。
- * 如果历史数据中没有这个基准交易日，则返回 null。
- */
-function calculateCalendarReturn(
+function getPeriodBaseIndex(
   klines: Kline[],
-  targetDate: number,
+  period: PerformancePeriod,
+): number {
+  const latest = klines.at(-1);
+  if (!latest) return -1;
+
+  const latestDate = toDate(latest.date);
+
+  let targetDate: Date;
+
+  if (period === "ytd") {
+    targetDate = new Date(Date.UTC(latestDate.getUTCFullYear(), 0, 1));
+  } else {
+    targetDate = subtractPeriod(latestDate, period);
+  }
+
+  const target = toDateNumber(targetDate);
+
+  // 找到目标日期之前最近一个交易日，作为收益基准
+  let baseIndex = -1;
+
+  for (let i = 0; i < klines.length; i++) {
+    if (klines[i].date < target) {
+      baseIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  return baseIndex;
+}
+
+function classifyReturn(value: number | null): string {
+  if (value === null) return "unknown";
+  if (value > 0) return "positive";
+  if (value < 0) return "negative";
+  return "flat";
+}
+
+function classifyVolatility(value: number | null): string {
+  if (value === null) return "unknown";
+  if (value < 0.15) return "low";
+  if (value < 0.3) return "medium";
+  return "high";
+}
+
+function classifyDrawdown(value: number | null): string {
+  if (value === null) return "unknown";
+  if (value > -0.05) return "low";
+  if (value > -0.15) return "medium";
+  return "high";
+}
+
+function calculatePeriodPerformance(
+  klines: Kline[],
+  period: PerformancePeriod,
+): PeriodPerformance {
+  const empty: PeriodPerformance = {
+    startDate: null,
+    endDate: klines.at(-1)?.date ?? null,
+    tradingDays: 0,
+
+    totalReturn: metric(null, "unknown"),
+    annualizedReturn: metric(null, "unknown"),
+    dailyReturnMean: metric(null, "unknown"),
+    dailyReturnMedian: metric(null, "unknown"),
+
+    volatility: metric(null, "unknown"),
+    maxDrawdown: metric(null, "unknown"),
+
+    upDays: 0,
+    downDays: 0,
+    flatDays: 0,
+    upDayRatio: null,
+    downDayRatio: null,
+
+    maxConsecutiveUpDays: 0,
+    maxConsecutiveDownDays: 0,
+    currentConsecutiveUpDays: 0,
+    currentConsecutiveDownDays: 0,
+
+    averageUpReturn: null,
+    averageDownReturn: null,
+    largestDailyGain: null,
+    largestDailyLoss: null,
+    gainLossRatio: null,
+
+    averageAmount: null,
+    medianAmount: null,
+    minAmount: null,
+    maxAmount: null,
+    amountStdDev: null,
+    amountChange: null,
+    activeDays: 0,
+    activeDayRatio: null,
+  };
+
+  if (klines.length < 2) return empty;
+
+  const baseIndex = getPeriodBaseIndex(klines, period);
+
+  if (baseIndex < 0 || baseIndex >= klines.length - 1) {
+    return empty;
+  }
+
+  const base = klines[baseIndex];
+  const samples = klines.slice(baseIndex + 1);
+
+  if (!samples.length || base.close <= 0) return empty;
+
+  const prices = [base.close, ...samples.map((item) => item.close)];
+
+  const dailyReturns: number[] = [];
+
+  let previousClose = base.close;
+
+  for (const item of samples) {
+    if (previousClose > 0) {
+      dailyReturns.push(item.close / previousClose - 1);
+    }
+    previousClose = item.close;
+  }
+
+  const totalReturn = samples.at(-1)!.close / base.close - 1;
+
+  const annualizedReturn =
+    totalReturn > -1
+      ? (1 + totalReturn) ** (TRADING_DAYS_PER_YEAR / dailyReturns.length) - 1
+      : -1;
+
+  const dailyMean = mean(dailyReturns);
+  const dailyMedian = median(dailyReturns);
+
+  const volatility = standardDeviation(dailyReturns);
+  const annualizedVolatility =
+    volatility === null ? null : volatility * Math.sqrt(TRADING_DAYS_PER_YEAR);
+
+  const drawdown = calculateMaxDrawdown(prices);
+
+  const upReturns = dailyReturns.filter((value) => value > 0);
+  const downReturns = dailyReturns.filter((value) => value < 0);
+
+  const upDays = upReturns.length;
+  const downDays = downReturns.length;
+  const flatDays = dailyReturns.length - upDays - downDays;
+
+  const upSequence = calculateConsecutiveDays(dailyReturns, "up");
+
+  const downSequence = calculateConsecutiveDays(dailyReturns, "down");
+
+  const averageUpReturn = mean(upReturns);
+  const averageDownReturn = mean(downReturns);
+
+  const gainLossRatio =
+    averageUpReturn !== null &&
+    averageDownReturn !== null &&
+    averageDownReturn !== 0
+      ? averageUpReturn / Math.abs(averageDownReturn)
+      : null;
+
+  const amounts = samples.map((item) => item.amount).filter(isFiniteNumber);
+
+  const averageAmount = mean(amounts);
+  const latestAmount = samples.at(-1)?.amount ?? null;
+
+  const amountChange =
+    averageAmount !== null && averageAmount > 0 && latestAmount !== null
+      ? latestAmount / averageAmount - 1
+      : null;
+
+  const activeDays = amounts.filter((value) => value > 0).length;
+
+  return {
+    startDate: base.date,
+    endDate: samples.at(-1)!.date,
+    tradingDays: dailyReturns.length,
+
+    totalReturn: metric(round(totalReturn), classifyReturn(totalReturn)),
+
+    annualizedReturn: metric(
+      round(annualizedReturn),
+      classifyReturn(annualizedReturn),
+    ),
+
+    dailyReturnMean: metric(
+      dailyMean === null ? null : round(dailyMean),
+      classifyReturn(dailyMean),
+    ),
+
+    dailyReturnMedian: metric(
+      dailyMedian === null ? null : round(dailyMedian),
+      classifyReturn(dailyMedian),
+    ),
+
+    volatility: metric(
+      annualizedVolatility === null ? null : round(annualizedVolatility),
+      classifyVolatility(annualizedVolatility),
+    ),
+
+    maxDrawdown: metric(
+      drawdown === null ? null : round(drawdown),
+      classifyDrawdown(drawdown),
+    ),
+
+    upDays,
+    downDays,
+    flatDays,
+
+    upDayRatio: round(upDays / dailyReturns.length),
+    downDayRatio: round(downDays / dailyReturns.length),
+
+    maxConsecutiveUpDays: upSequence.max,
+    maxConsecutiveDownDays: downSequence.max,
+    currentConsecutiveUpDays: upSequence.current,
+    currentConsecutiveDownDays: downSequence.current,
+
+    averageUpReturn: averageUpReturn === null ? null : round(averageUpReturn),
+
+    averageDownReturn:
+      averageDownReturn === null ? null : round(averageDownReturn),
+
+    largestDailyGain: max(upReturns) === null ? null : round(max(upReturns)!),
+
+    largestDailyLoss:
+      min(downReturns) === null ? null : round(min(downReturns)!),
+
+    gainLossRatio: gainLossRatio === null ? null : round(gainLossRatio),
+
+    averageAmount: averageAmount === null ? null : round(averageAmount),
+
+    medianAmount: median(amounts) === null ? null : round(median(amounts)!),
+
+    minAmount: min(amounts) === null ? null : round(min(amounts)!),
+
+    maxAmount: max(amounts) === null ? null : round(max(amounts)!),
+
+    amountStdDev:
+      standardDeviation(amounts) === null
+        ? null
+        : round(standardDeviation(amounts)!),
+
+    amountChange: amountChange === null ? null : round(amountChange),
+
+    activeDays,
+    activeDayRatio: amounts.length ? round(activeDays / amounts.length) : null,
+  };
+}
+
+function calculatePerformance(klines: Kline[]): PerformanceFeatures {
+  return Object.fromEntries(
+    PERFORMANCE_PERIODS.map((period) => [
+      period,
+      calculatePeriodPerformance(klines, period),
+    ]),
+  ) as PerformanceFeatures;
+}
+
+// ============================================================
+// 13. 均线计算
+// ============================================================
+
+function calculateMA(
+  closes: number[],
+  period: number,
+  endIndex = closes.length - 1,
 ): number | null {
-  const firstIndex = klines.findIndex((item) => item.date >= targetDate);
+  const startIndex = endIndex - period + 1;
 
-  if (firstIndex <= 0) return null;
+  if (startIndex < 0 || endIndex >= closes.length) {
+    return null;
+  }
 
-  const base = klines[firstIndex - 1];
-  const latest = klines[klines.length - 1];
+  const values = closes.slice(startIndex, endIndex + 1);
 
-  return round(latest.close / base.close - 1);
+  if (values.length !== period) return null;
+
+  return mean(values);
 }
 
-function calculateReturns(
-  klines: Kline[],
-): Record<ReturnPeriod, number | null> {
-  const latest = klines[klines.length - 1];
+function calculateMAAt(
+  closes: number[],
+  period: number,
+  index: number,
+): number | null {
+  return calculateMA(closes, period, index);
+}
 
-  if (!latest) {
-    return {
-      d1: null,
-      d5: null,
-      d20: null,
-      d60: null,
-      d120: null,
-      d250: null,
-      ytd: null,
+function calculateTrend(
+  current: number | null,
+  previous: number | null,
+  threshold = 0.001,
+): Trend {
+  if (current === null || previous === null || previous === 0) {
+    return "unknown";
+  }
+
+  const change = current / previous - 1;
+
+  if (change > threshold) return "rising";
+  if (change < -threshold) return "falling";
+
+  return "flat";
+}
+
+function calculateCross(
+  currentShort: number | null,
+  currentLong: number | null,
+  previousShort: number | null,
+  previousLong: number | null,
+): MACross {
+  if (
+    currentShort === null ||
+    currentLong === null ||
+    previousShort === null ||
+    previousLong === null
+  ) {
+    return "unknown";
+  }
+
+  if (previousShort <= previousLong && currentShort > currentLong) {
+    return "golden";
+  }
+
+  if (previousShort >= previousLong && currentShort < currentLong) {
+    return "death";
+  }
+
+  return "none";
+}
+type MAKey = `ma${(typeof MA_PERIODS)[number]}`;
+
+function calculateMovingAverages(klines: Kline[]): MovingAverages {
+  const closes = klines.map((item) => item.close);
+  const latestClose = closes.at(-1) ?? null;
+  const latestIndex = closes.length - 1;
+
+  const values = {} as Record<MAKey, number | null>;
+
+  const analyses = {} as Record<MAKey, MAAnalysis>;
+
+  for (const period of MA_PERIODS) {
+    const key = `ma${period}` as const;
+
+    const current = calculateMAAt(closes, period, latestIndex);
+
+    const previous = calculateMAAt(closes, period, latestIndex - 5);
+
+    values[key] = current;
+
+    analyses[key] = {
+      trend: calculateTrend(current, previous),
+      pricePosition:
+        current === null || latestClose === null
+          ? "unknown"
+          : latestClose >= current
+            ? "above"
+            : "below",
     };
   }
 
-  const yearStart = Math.floor(latest.date / 10000) * 10000 + 101;
+  const currentMA5 = values.ma5;
+  const currentMA10 = values.ma10;
+  const currentMA20 = values.ma20;
+  const currentMA60 = values.ma60;
+
+  const previousMA5 = calculateMAAt(closes, 5, latestIndex - 1);
+
+  const previousMA20 = calculateMAAt(closes, 20, latestIndex - 1);
+
+  const previousMA10 = calculateMAAt(closes, 10, latestIndex - 1);
+
+  const previousMA60 = calculateMAAt(closes, 60, latestIndex - 1);
+
+  const alignmentValues = [currentMA5, currentMA10, currentMA20, currentMA60];
+
+  let alignment: MAAlignment = "unknown";
+
+  if (alignmentValues.every(isFiniteNumber)) {
+    const [ma5, ma10, ma20, ma60] = alignmentValues;
+
+    if (ma5 > ma10 && ma10 > ma20 && ma20 > ma60) {
+      alignment = "bullish";
+    } else if (ma5 < ma10 && ma10 < ma20 && ma20 < ma60) {
+      alignment = "bearish";
+    } else {
+      alignment = "mixed";
+    }
+  }
+
+  const availableMAs = alignmentValues.filter(isFiniteNumber);
+
+  const dispersion =
+    availableMAs.length >= 2
+      ? (Math.max(...availableMAs) - Math.min(...availableMAs)) /
+        mean(availableMAs)!
+      : null;
 
   return {
-    d1: calculateReturn(klines, 1),
-    d5: calculateReturn(klines, 5),
-    d20: calculateReturn(klines, 20),
-    d60: calculateReturn(klines, 60),
-    d120: calculateReturn(klines, 120),
-    d250: calculateReturn(klines, 250),
-    ytd: calculateCalendarReturn(klines, yearStart),
+    ma5: metric(values.ma5 === null ? null : round(values.ma5), analyses.ma5),
+    ma10: metric(
+      values.ma10 === null ? null : round(values.ma10),
+      analyses.ma10,
+    ),
+    ma20: metric(
+      values.ma20 === null ? null : round(values.ma20),
+      analyses.ma20,
+    ),
+    ma60: metric(
+      values.ma60 === null ? null : round(values.ma60),
+      analyses.ma60,
+    ),
+    ma120: metric(
+      values.ma120 === null ? null : round(values.ma120),
+      analyses.ma120,
+    ),
+    ma250: metric(
+      values.ma250 === null ? null : round(values.ma250),
+      analyses.ma250,
+    ),
+
+    analysis: {
+      alignment,
+      cross: {
+        ma5Ma20: calculateCross(
+          currentMA5,
+          currentMA20,
+          previousMA5,
+          previousMA20,
+        ),
+        ma10Ma60: calculateCross(
+          currentMA10,
+          currentMA60,
+          previousMA10,
+          previousMA60,
+        ),
+      },
+      dispersion: dispersion === null ? null : round(dispersion),
+    },
   };
 }
 
-// ==================================================
-// 5. 均线和均线偏离
-// ==================================================
+// ============================================================
+// 14. 均线偏离计算
+// ============================================================
 
-function calculateMA(klines: Kline[], period: number): number | null {
-  if (klines.length < period) return null;
+function classifyDeviation(value: number | null): DeviationStatus {
+  if (value === null) return "unknown";
 
-  const values = klines.slice(-period).map((item) => item.close);
+  if (value < -0.1) return "deeply_below";
+  if (value < -0.05) return "below";
+  if (value <= 0.05) return "near";
+  if (value <= 0.1) return "above";
 
-  const result = mean(values);
-  return result === null ? null : round(result);
-}
-
-function calculateMovingAverages(klines: Kline[]): MovingAverages {
-  const result = {} as MovingAverages;
-
-  for (const period of MA_PERIODS) {
-    const key = `ma${period}` as keyof MovingAverages;
-    result[key] = calculateMA(klines, period);
-  }
-
-  return result;
+  return "deeply_above";
 }
 
 function calculateMADeviation(
-  close: number | null,
-  averages: MovingAverages,
-): MovingAverages {
-  const result = {} as MovingAverages;
+  klines: Kline[],
+  movingAverages: MovingAverages,
+): MADeviation {
+  const close = klines.at(-1)?.close ?? null;
 
-  for (const period of MA_PERIODS) {
-    const key = `ma${period}` as keyof MovingAverages;
-    const ma = averages[key];
+  function calculate(
+    ma: Metric<Nullable<number>, MAAnalysis>,
+  ): Metric<Nullable<number>, DeviationStatus> {
+    if (close === null || ma.value === null || ma.value === 0) {
+      return metric(null, "unknown");
+    }
 
-    result[key] =
-      close !== null && ma !== null && ma !== 0 ? round(close / ma - 1) : null;
+    const value = close / ma.value - 1;
+
+    return metric(round(value), classifyDeviation(value));
   }
-
-  return result;
-}
-
-// ==================================================
-// 6. 布林带
-// ==================================================
-
-/** BOLL(20, 2)，使用总体标准差 */
-function calculateBollinger(klines: Kline[]): BollingerBands {
-  if (klines.length < 20) return { ...EMPTY_BOLL };
-
-  const closes = klines.slice(-20).map((item) => item.close);
-
-  const middle = mean(closes);
-  const stdDev = populationStdDev(closes);
-
-  if (middle === null || stdDev === null || middle === 0) {
-    return { ...EMPTY_BOLL };
-  }
-
-  const upper = middle + 2 * stdDev;
-  const lower = middle - 2 * stdDev;
-  const latestClose = closes[closes.length - 1];
 
   return {
-    upper: round(upper),
-    middle: round(middle),
-    lower: round(lower),
-    bandwidth: round((upper - lower) / middle),
-    position:
-      upper === lower ? null : round((latestClose - lower) / (upper - lower)),
+    ma5: calculate(movingAverages.ma5),
+    ma10: calculate(movingAverages.ma10),
+    ma20: calculate(movingAverages.ma20),
+    ma60: calculate(movingAverages.ma60),
+    ma120: calculate(movingAverages.ma120),
+    ma250: calculate(movingAverages.ma250),
   };
 }
 
-// ==================================================
-// 7. 周K / 月K
-// ==================================================
+// ============================================================
+// 15. 周 K / 月 K 聚合
+// ============================================================
 
-function getWeekStart(date: number): number {
-  const d = toDate(date);
-  const weekday = d.getUTCDay() || 7;
-
-  d.setUTCDate(d.getUTCDate() - weekday + 1);
-  return toDateNumber(d);
+interface AggregatedKline {
+  date: number;
+  high: number;
+  low: number;
+  close: number;
 }
 
-function getMonthStart(date: number): number {
+function getISOWeekKey(date: number): string {
   const d = toDate(date);
+  const day = d.getUTCDay() || 7;
 
-  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + 1;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+
+  const year = d.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+
+  const week = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
+
+  return `${year}-${week}`;
 }
 
-function aggregateKlines(klines: Kline[], type: "weekly" | "monthly"): Kline[] {
-  const groups = new Map<number, Kline[]>();
+function aggregateKlines(
+  klines: Kline[],
+  type: "weekly" | "monthly",
+): AggregatedKline[] {
+  const groups = new Map<string, Kline[]>();
 
   for (const item of klines) {
+    const date = toDate(item.date);
+
     const key =
-      type === "weekly" ? getWeekStart(item.date) : getMonthStart(item.date);
+      type === "weekly"
+        ? getISOWeekKey(item.date)
+        : `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`;
 
     const group = groups.get(key) ?? [];
     group.push(item);
     groups.set(key, group);
   }
 
-  const result: Kline[] = [];
+  return [...groups.values()].map((group) => ({
+    date: group.at(-1)!.date,
+    high: Math.max(...group.map((item) => item.high)),
+    low: Math.min(...group.map((item) => item.low)),
+    close: group.at(-1)!.close,
+  }));
+}
 
-  for (const group of groups.values()) {
-    const first = group[0];
-    const last = group[group.length - 1];
+// ============================================================
+// 16. 布林带计算
+// ============================================================
 
-    const high = Math.max(...group.map((item) => item.high));
-    const low = Math.min(...group.map((item) => item.low));
+interface BollingerPoint {
+  upper: number;
+  middle: number;
+  lower: number;
+  bandwidth: number;
+  percentB: number;
+}
 
-    const volumeValues = group.map((item) => item.volume);
-    const amountValues = group.map((item) => item.amount);
+function calculateBollingerAt(
+  closes: number[],
+  endIndex: number,
+): BollingerPoint | null {
+  const startIndex = endIndex - BOLLINGER_PERIOD + 1;
 
-    const volume = volumeValues.every(isValidNumber)
-      ? volumeValues.reduce((sum, value) => sum + value, 0)
-      : NaN;
+  if (startIndex < 0) return null;
 
-    const amount = amountValues.every(isValidNumber)
-      ? amountValues.reduce((sum, value) => sum + value, 0)
-      : NaN;
+  const values = closes.slice(startIndex, endIndex + 1);
 
-    const change = last.close - first.open;
-
-    result.push({
-      code: first.code,
-      date: last.date,
-      open: first.open,
-      high,
-      low,
-      close: last.close,
-      volume,
-      amount,
-      change,
-      changePercent: first.open > 0 ? (change / first.open) * 100 : NaN,
-    });
+  if (values.length !== BOLLINGER_PERIOD) {
+    return null;
   }
 
-  return result.sort((a, b) => a.date - b.date);
+  const middle = mean(values);
+
+  if (middle === null || middle <= 0) return null;
+
+  // BOLL 使用总体标准差
+  const variance =
+    values.reduce((sum, value) => sum + (value - middle) ** 2, 0) /
+    values.length;
+
+  const sd = Math.sqrt(variance);
+
+  const upper = middle + BOLLINGER_MULTIPLIER * sd;
+
+  const lower = middle - BOLLINGER_MULTIPLIER * sd;
+
+  const bandwidth = (upper - lower) / middle;
+
+  const latestClose = closes[endIndex];
+
+  const percentB =
+    upper === lower ? 0.5 : (latestClose - lower) / (upper - lower);
+
+  return {
+    upper,
+    middle,
+    lower,
+    bandwidth,
+    percentB,
+  };
 }
 
-// ==================================================
-// 8. 风险指标
-// ==================================================
-
-/** 收盘价最大回撤，负数表示回撤 */
-function calculateMaxDrawdown(klines: Kline[], period?: number): number | null {
-  const data = period === undefined ? klines : klines.slice(-period);
-
-  if (data.length < 2) return null;
-
-  let peak = data[0].close;
-  let maxDrawdown = 0;
-
-  for (const item of data) {
-    peak = Math.max(peak, item.close);
-
-    const drawdown = item.close / peak - 1;
-    maxDrawdown = Math.min(maxDrawdown, drawdown);
+function calculateBandwidthTrend(
+  current: number | null,
+  previous: number | null,
+): BandwidthTrend {
+  if (current === null || previous === null || previous === 0) {
+    return "unknown";
   }
 
-  return round(maxDrawdown);
+  const change = current / previous - 1;
+
+  if (change > 0.05) return "expanding";
+  if (change < -0.05) return "contracting";
+
+  return "stable";
 }
 
-/** 年化波动率：日收益率样本标准差 × √250 */
-function calculateVolatility(klines: Kline[], period: number): number | null {
-  if (klines.length < period + 1) return null;
+function calculateBollingerPosition(
+  close: number | null,
+  bands: BollingerPoint | null,
+): BollingerPosition {
+  if (close === null || bands === null) {
+    return "unknown";
+  }
 
-  const data = klines.slice(-(period + 1));
-  const returns = getDailyReturns(data);
+  if (close > bands.upper) return "above_upper";
+  if (close < bands.lower) return "below_lower";
+  if (close >= bands.middle) return "upper_half";
 
-  if (returns.length !== period) return null;
-
-  const stdDev = sampleStdDev(returns);
-
-  return stdDev === null
-    ? null
-    : round(stdDev * Math.sqrt(TRADING_DAYS_PER_YEAR));
+  return "lower_half";
 }
 
-function calculateRisk(klines: Kline[]): RiskFeatures {
+function calculateBollingerSignal(
+  currentClose: number | null,
+  currentBands: BollingerPoint | null,
+  previousClose: number | null,
+  previousBands: BollingerPoint | null,
+): BollingerSignal {
+  if (
+    currentClose === null ||
+    currentBands === null ||
+    previousClose === null ||
+    previousBands === null
+  ) {
+    return "unknown";
+  }
+
+  if (
+    previousClose <= previousBands.upper &&
+    currentClose > currentBands.upper
+  ) {
+    return "breakout_upper";
+  }
+
+  if (
+    previousClose >= previousBands.lower &&
+    currentClose < currentBands.lower
+  ) {
+    return "breakout_lower";
+  }
+
+  if (
+    previousClose <= previousBands.middle &&
+    currentClose > currentBands.middle
+  ) {
+    return "cross_above_middle";
+  }
+
+  if (
+    previousClose >= previousBands.middle &&
+    currentClose < currentBands.middle
+  ) {
+    return "cross_below_middle";
+  }
+
+  return "none";
+}
+
+function calculateSqueeze(
+  bandwidths: number[],
+  current: number | null,
+): boolean | null {
+  if (current === null || bandwidths.length < 20) {
+    return null;
+  }
+
+  const sorted = [...bandwidths].sort((a, b) => a - b);
+
+  // 当前带宽处于最近 120 个有效周期的 20% 分位以下
+  const index = Math.floor((sorted.length - 1) * 0.2);
+  const threshold = sorted[index];
+
+  return current <= threshold;
+}
+
+function calculateBollingerPeriod(closes: number[]): BollingerPeriod {
+  const latestIndex = closes.length - 1;
+
+  const current = calculateBollingerAt(closes, latestIndex);
+
+  const previous = calculateBollingerAt(closes, latestIndex - 1);
+
+  const middlePrevious = calculateBollingerAt(closes, latestIndex - 5);
+
+  const currentClose = closes.at(-1) ?? null;
+  const previousClose = closes.at(-2) ?? null;
+
+  const bandwidthHistory: number[] = [];
+
+  // 最近最多 120 个有效周期的带宽
+  const startIndex = Math.max(BOLLINGER_PERIOD - 1, latestIndex - 119);
+
+  for (let i = startIndex; i <= latestIndex; i++) {
+    const point = calculateBollingerAt(closes, i);
+
+    if (point) {
+      bandwidthHistory.push(point.bandwidth);
+    }
+  }
+
+  const middleTrend = calculateTrend(
+    current?.middle ?? null,
+    middlePrevious?.middle ?? null,
+  );
+
+  const bands: BollingerBands = {
+    upper: metric(current ? round(current.upper) : null),
+    middle: metric(current ? round(current.middle) : null),
+    lower: metric(current ? round(current.lower) : null),
+    bandwidth: metric(current ? round(current.bandwidth) : null),
+    percentB: metric(current ? round(current.percentB) : null),
+  };
+
   return {
-    volatility20: calculateVolatility(klines, 20),
-    volatility60: calculateVolatility(klines, 60),
-    volatility120: calculateVolatility(klines, 120),
+    value: bands,
 
-    maxDrawdown20: calculateMaxDrawdown(klines, 20),
-    maxDrawdown60: calculateMaxDrawdown(klines, 60),
-    maxDrawdown120: calculateMaxDrawdown(klines, 120),
-    maxDrawdown250: calculateMaxDrawdown(klines, 250),
+    analysis: {
+      position: calculateBollingerPosition(currentClose, current),
+
+      bandwidthTrend: calculateBandwidthTrend(
+        current?.bandwidth ?? null,
+        previous?.bandwidth ?? null,
+      ),
+
+      squeeze: calculateSqueeze(bandwidthHistory, current?.bandwidth ?? null),
+
+      priceSignal: calculateBollingerSignal(
+        currentClose,
+        current,
+        previousClose,
+        previous,
+      ),
+
+      middleTrend,
+    },
   };
 }
 
-// ==================================================
-// 9. 历史区间统计
-// ==================================================
+function calculateBollinger(klines: Kline[]): BollingerFeatures {
+  const dailyCloses = klines.map((item) => item.close);
 
-function emptyStatistics(): PeriodStatistics {
+  const weekly = aggregateKlines(klines, "weekly");
+  const monthly = aggregateKlines(klines, "monthly");
+
   return {
-    startDate: null,
-    endDate: null,
-    tradingDays: 0,
-    totalReturn: null,
-    annualizedReturn: null,
-    dailyReturnMean: null,
-    dailyReturnMedian: null,
-    dailyReturnStdDev: null,
-    upDays: 0,
-    downDays: 0,
-    upDayRatio: null,
-    maxDrawdown: null,
+    daily: calculateBollingerPeriod(dailyCloses),
+
+    weekly: calculateBollingerPeriod(weekly.map((item) => item.close)),
+
+    monthly: calculateBollingerPeriod(monthly.map((item) => item.close)),
   };
 }
 
-function calculatePeriodStatistics(
-  klines: Kline[],
-  targetDate: number,
-): PeriodStatistics {
-  const firstIndex = klines.findIndex((item) => item.date >= targetDate);
+// ============================================================
+// 17. 估值计算
+// ============================================================
 
-  // 必须有目标区间之前的基准收盘价
-  if (firstIndex <= 0) return emptyStatistics();
+function getValuationStatus(percentile: number | null): AnalysisStatus {
+  if (percentile === null) return "unknown";
 
-  const data = klines.slice(firstIndex - 1);
+  if (percentile < 0.1) return "very_low";
+  if (percentile < 0.3) return "low";
+  if (percentile < 0.7) return "neutral";
+  if (percentile < 0.9) return "high";
 
-  if (data.length < 2) return emptyStatistics();
-
-  const returns = getDailyReturns(data);
-  if (!returns.length) return emptyStatistics();
-
-  const first = data[1];
-  const latest = data[data.length - 1];
-
-  const totalReturn = latest.close / data[0].close - 1;
-  const tradingDays = returns.length;
-
-  const annualizedReturn =
-    totalReturn > -1
-      ? (1 + totalReturn) ** (TRADING_DAYS_PER_YEAR / tradingDays) - 1
-      : null;
-
-  const upDays = returns.filter((value) => value > 0).length;
-  const downDays = returns.filter((value) => value < 0).length;
-
-  const avg = mean(returns);
-  const med = median(returns);
-  const std = sampleStdDev(returns);
-
-  return {
-    startDate: first.date,
-    endDate: latest.date,
-    tradingDays,
-    totalReturn: round(totalReturn),
-    annualizedReturn:
-      annualizedReturn === null ? null : round(annualizedReturn),
-    dailyReturnMean: avg === null ? null : round(avg),
-    dailyReturnMedian: med === null ? null : round(med),
-    dailyReturnStdDev: std === null ? null : round(std),
-    upDays,
-    downDays,
-    upDayRatio: round(upDays / tradingDays),
-    maxDrawdown: calculateMaxDrawdown(data),
-  };
+  return "very_high";
 }
 
-function calculateStatistics(
-  klines: Kline[],
-): Record<StatisticsPeriod, PeriodStatistics> {
-  const latest = klines[klines.length - 1];
+function calculatePercentile(values: number[], current: number): number | null {
+  if (!values.length) return null;
 
-  if (!latest) {
+  const count = values.filter((value) => value <= current).length;
+
+  return count / values.length;
+}
+
+function calculateValuationHistory(
+  records: Valuation[],
+  currentValue: number,
+  period: ValuationPeriod,
+  latestDate: number,
+): ValuationHistory {
+  let samples = records;
+
+  if (period !== "all") {
+    const years = Number.parseInt(period, 10);
+    const targetDate = toDate(latestDate);
+    targetDate.setUTCFullYear(targetDate.getUTCFullYear() - years);
+
+    const minDate = toDateNumber(targetDate);
+
+    samples = records.filter((item) => item.date >= minDate);
+  }
+
+  const values = samples
+    .map((item) => item.value)
+    .filter((value) => value > 0 && isFiniteNumber(value));
+
+  if (!values.length) {
     return {
-      "1m": emptyStatistics(),
-      "3m": emptyStatistics(),
-      "6m": emptyStatistics(),
-      ytd: emptyStatistics(),
-      "1y": emptyStatistics(),
-      "2y": emptyStatistics(),
+      min: null,
+      max: null,
+      mean: null,
+      median: null,
+      stdDev: null,
+      percentile: null,
+      deviation: null,
+      zScore: null,
     };
   }
 
-  const yearStart = Math.floor(latest.date / 10000) * 10000 + 101;
+  const avg = mean(values)!;
+  const med = median(values)!;
+  const sd = standardDeviation(values);
 
   return {
-    "1m": calculatePeriodStatistics(klines, subtractMonths(latest.date, 1)),
-    "3m": calculatePeriodStatistics(klines, subtractMonths(latest.date, 3)),
-    "6m": calculatePeriodStatistics(klines, subtractMonths(latest.date, 6)),
-    ytd: calculatePeriodStatistics(klines, yearStart),
-    "1y": calculatePeriodStatistics(klines, subtractMonths(latest.date, 12)),
-    "2y": calculatePeriodStatistics(klines, subtractMonths(latest.date, 24)),
+    min: round(min(values)!),
+    max: round(max(values)!),
+    mean: round(avg),
+    median: round(med),
+    stdDev: sd === null ? null : round(sd),
+
+    percentile: round(calculatePercentile(values, currentValue)!),
+
+    deviation: med === 0 ? null : round(currentValue / med - 1),
+
+    zScore: sd === null || sd === 0 ? null : round((currentValue - avg) / sd),
   };
 }
 
-// ==================================================
-// 10. 成交指标
-// ==================================================
-
-function calculateAverageAmount(
-  klines: Kline[],
-  period: number,
-): number | null {
-  if (klines.length < period) return null;
-
-  const values = klines.slice(-period).map((item) => item.amount);
-
-  if (!values.every(isValidNumber)) return null;
-
-  return round(values.reduce((sum, value) => sum + value, 0) / period, 2);
-}
-
-function calculateVolumeFeatures(klines: Kline[]): VolumeFeatures {
-  const latest = klines[klines.length - 1];
-
-  if (!latest) {
-    return {
-      latestAmount: null,
-      averageAmount5: null,
-      averageAmount20: null,
-      amountRatio20: null,
-      amountChange20: null,
-    };
-  }
-
-  const latestAmount = isValidNumber(latest.amount)
-    ? round(latest.amount, 2)
-    : null;
-
-  const averageAmount5 = calculateAverageAmount(klines, 5);
-  const averageAmount20 = calculateAverageAmount(klines, 20);
-
-  const amountRatio20 =
-    latestAmount !== null && averageAmount20 !== null && averageAmount20 > 0
-      ? round(latestAmount / averageAmount20)
-      : null;
-
-  return {
-    latestAmount,
-    averageAmount5,
-    averageAmount20,
-    amountRatio20,
-    amountChange20: amountRatio20 === null ? null : round(amountRatio20 - 1),
+function createEmptyValuation(): SingleValuationFeature {
+  const emptyHistory: ValuationHistory = {
+    min: null,
+    max: null,
+    mean: null,
+    median: null,
+    stdDev: null,
+    percentile: null,
+    deviation: null,
+    zScore: null,
   };
-}
 
-// ==================================================
-// 11. 指数估值
-// ==================================================
-
-function emptyValuation(): ValuationFeature {
   return {
     value: null,
-    percentile: null,
+
+    analysis: {
+      status: "unknown",
+      history: {
+        "1y": { ...emptyHistory },
+        "3y": { ...emptyHistory },
+        "5y": { ...emptyHistory },
+        all: { ...emptyHistory },
+      },
+    },
+
     peg: null,
     date: null,
     delayDays: null,
@@ -733,194 +1402,115 @@ function emptyValuation(): ValuationFeature {
 }
 
 function calculateSingleValuation(
-  valuations: Valuation[],
-  type: ValuationType,
-  trackIndex: string,
-  latestDate: number | null,
-): ValuationFeature {
-  if (latestDate === null) return emptyValuation();
+  records: Valuation[],
+  latestDate: number,
+): SingleValuationFeature {
+  if (!records.length) {
+    return createEmptyValuation();
+  }
 
-  const candidates = valuations
-    .filter(
-      (item) =>
-        item.code === trackIndex &&
-        item.type === type &&
-        item.date <= latestDate &&
-        isValidDateNumber(item.date) &&
-        isValidNumber(item.value),
-    )
-    .sort((a, b) => b.date - a.date);
+  // 只取 ETF 最新行情日期及之前的数据
+  const validRecords = records
+    .filter((item) => item.date <= latestDate)
+    .filter((item) => item.value > 0)
+    .sort((a, b) => a.date - b.date);
 
-  const latest = candidates[0];
+  const latest = validRecords.at(-1);
 
-  if (!latest) return emptyValuation();
+  if (!latest) {
+    return createEmptyValuation();
+  }
+
+  const history = {} as Record<ValuationPeriod, ValuationHistory>;
+
+  for (const period of VALUATION_PERIODS) {
+    history[period] = calculateValuationHistory(
+      validRecords,
+      latest.value,
+      period,
+      latest.date,
+    );
+  }
+
+  const percentile = history["3y"].percentile;
 
   return {
     value: round(latest.value),
 
-    // 上游已经是 0～1，不进行百分数转换
-    percentile: isValidNumber(latest.percent) ? round(latest.percent) : null,
+    analysis: {
+      status: getValuationStatus(percentile),
+      history,
+    },
 
-    peg: isValidNumber(latest.peg) ? round(latest.peg) : null,
-
+    peg: latest.peg ?? null,
     date: latest.date,
-    delayDays: daysBetween(latest.date, latestDate),
+    delayDays: dateDiffDays(latest.date, latestDate),
   };
 }
 
-function calculateValuationFeatures(
+function calculateValuation(
+  etf: Etf,
   valuations: Valuation[],
-  trackIndex: string,
-  latestDate: number | null,
+  latestDate: number,
 ): ValuationFeatures {
+  // 估值 code 对应 ETF 跟踪指数代码
+  const indexRecords = sortValuations(
+    valuations.filter((item) => item.code === etf.trackIndex),
+  );
+
   return {
-    PE: calculateSingleValuation(valuations, "PE", trackIndex, latestDate),
-    PB: calculateSingleValuation(valuations, "PB", trackIndex, latestDate),
-    PS: calculateSingleValuation(valuations, "PS", trackIndex, latestDate),
+    PE: calculateSingleValuation(
+      indexRecords.filter((item) => item.type === "PE"),
+      latestDate,
+    ),
+
+    PB: calculateSingleValuation(
+      indexRecords.filter((item) => item.type === "PB"),
+      latestDate,
+    ),
+
+    PS: calculateSingleValuation(
+      indexRecords.filter((item) => item.type === "PS"),
+      latestDate,
+    ),
   };
 }
 
-// ==================================================
-// 12. 空结果
-// ==================================================
-
-function createEmptyEtfFeatures(etf: Etf): EtfFeatures {
-  return {
-    etf,
-
-    data: {
-      latestDate: null,
-      earliestDate: null,
-      totalTradingDays: 0,
-    },
-
-    market: {
-      close: null,
-      change: null,
-      changePercent: null,
-      high: null,
-      low: null,
-      volume: null,
-      amount: null,
-    },
-
-    returns: {
-      d1: null,
-      d5: null,
-      d20: null,
-      d60: null,
-      d120: null,
-      d250: null,
-      ytd: null,
-    },
-
-    statistics: {
-      "1m": emptyStatistics(),
-      "3m": emptyStatistics(),
-      "6m": emptyStatistics(),
-      ytd: emptyStatistics(),
-      "1y": emptyStatistics(),
-      "2y": emptyStatistics(),
-    },
-
-    movingAverages: { ...EMPTY_MA },
-    maDeviation: { ...EMPTY_MA },
-
-    bollinger: {
-      daily: { ...EMPTY_BOLL },
-      weekly: { ...EMPTY_BOLL },
-      monthly: { ...EMPTY_BOLL },
-    },
-
-    risk: {
-      volatility20: null,
-      volatility60: null,
-      volatility120: null,
-      maxDrawdown20: null,
-      maxDrawdown60: null,
-      maxDrawdown120: null,
-      maxDrawdown250: null,
-    },
-
-    volume: {
-      latestAmount: null,
-      averageAmount5: null,
-      averageAmount20: null,
-      amountRatio20: null,
-      amountChange20: null,
-    },
-
-    valuation: {
-      PE: emptyValuation(),
-      PB: emptyValuation(),
-      PS: emptyValuation(),
-    },
-  };
-}
-
-// ==================================================
-// 13. 核心函数
-// ==================================================
+// ============================================================
+// 18. 主入口
+// ============================================================
 
 export function calculateEtfFeatures(
   etf: Etf,
   klines: Kline[],
   valuations: Valuation[],
 ): EtfFeatures {
-  const data = normalizeKlines(etf.code, klines);
+  const sortedKlines = sortKlines(
+    klines.filter((item) => item.code === etf.code),
+  );
 
-  if (!data.length) {
-    return createEmptyEtfFeatures(etf);
-  }
+  const latest = sortedKlines.at(-1);
+  const latestDate = latest?.date ?? 0;
 
-  const latest = data[data.length - 1];
-  const earliest = data[0];
+  const data = calculateDataFeatures(sortedKlines);
+  const market = calculateMarketFeatures(latest);
 
-  const movingAverages = calculateMovingAverages(data);
-
-  const weeklyKlines = aggregateKlines(data, "weekly");
-  const monthlyKlines = aggregateKlines(data, "monthly");
+  const movingAverages = calculateMovingAverages(sortedKlines);
 
   return {
     etf,
 
-    data: {
-      latestDate: latest.date,
-      earliestDate: earliest.date,
-      totalTradingDays: data.length,
-    },
+    data,
+    market,
 
-    market: {
-      close: round(latest.close),
-      change: isValidNumber(latest.change) ? round(latest.change) : null,
-      changePercent: isValidNumber(latest.changePercent)
-        ? round(latest.changePercent)
-        : null,
-      high: isValidNumber(latest.high) ? round(latest.high) : null,
-      low: isValidNumber(latest.low) ? round(latest.low) : null,
-      volume: isValidNumber(latest.volume) ? round(latest.volume, 2) : null,
-      amount: isValidNumber(latest.amount) ? round(latest.amount, 2) : null,
-    },
-
-    returns: calculateReturns(data),
-    statistics: calculateStatistics(data),
+    performance: calculatePerformance(sortedKlines),
 
     movingAverages,
-    maDeviation: calculateMADeviation(latest.close, movingAverages),
 
-    bollinger: {
-      daily: calculateBollinger(data),
-      weekly: calculateBollinger(weeklyKlines),
-      monthly: calculateBollinger(monthlyKlines),
-    },
+    maDeviation: calculateMADeviation(sortedKlines, movingAverages),
 
-    risk: calculateRisk(data),
-    volume: calculateVolumeFeatures(data),
+    bollinger: calculateBollinger(sortedKlines),
 
-    valuation: calculateValuationFeatures(
-      valuations,
-      etf.trackIndex,
-      latest.date,
-    ),
+    valuation: calculateValuation(etf, valuations, latestDate),
   };
 }
