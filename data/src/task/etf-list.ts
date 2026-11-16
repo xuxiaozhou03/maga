@@ -1,8 +1,9 @@
+import { etfsData } from "../data";
 import { Etf, fetchOriginalEtfs } from "../fetch/etfs";
 import { fetchLinkFund } from "../fetch/linkFund";
 import { classifyEtfs } from "./etf-categories";
 
-export const fetchEtfs = async () => {
+export const runEtfListTask = async () => {
   const originalEtfs = await fetchOriginalEtfs();
   const map = originalEtfs.reduce(
     (acc, item) => ({
@@ -34,6 +35,6 @@ export const fetchEtfs = async () => {
 
   const etfs = Object.values(map);
 
-  const classifies = await classifyEtfs(etfs);
-  return classifies;
+  const classifies = classifyEtfs(etfs);
+  etfsData.save(classifies);
 };

@@ -11,9 +11,9 @@
  * - amount / volume / scale：保留上游单位
  */
 
-import { Etf } from "./fetch/etfs";
-import { Kline } from "./data/klines";
-import { Valuation } from "./data/valuation";
+import { Etf } from "../fetch/etfs";
+import { Kline } from "../fetch/klines";
+import { Valuation } from "../fetch/valuation";
 
 // ==================================================
 // 1. 返回类型定义
