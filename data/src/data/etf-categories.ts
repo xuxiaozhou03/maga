@@ -1,4 +1,4 @@
-import { Etf } from "./etfs";
+import { Etf } from "../fetch/etfs";
 
 /**
  * ETF 匹配文本。
@@ -69,7 +69,6 @@ const nonUs = (text: string) =>
     "马来西亚",
     "新加坡",
     "韩国",
-    "中韩",
     "亚太",
     "欧洲",
     "英国",
@@ -89,9 +88,9 @@ export const ETF_CATEGORIES = [
   // 港股细分行业
   {
     id: "hk_technology",
-    name: "港股科技互联网",
+    name: "互联网",
     match: keywords(
-      "恒生科技",
+      "互联网",
       "恒生互联网",
       "恒生港股通科技",
       "港股通科技",
@@ -120,7 +119,7 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "hk_dividend",
-    name: "港股红利价值",
+    name: "港股红利",
     match: (text: string) =>
       hk(text) &&
       keywords(
@@ -141,12 +140,6 @@ export const ETF_CATEGORIES = [
       hk(text) &&
       keywords("非银", "证券", "金融", "银行", "保险", "地产", "房地产")(text),
   },
-  {
-    id: "hk_consumption",
-    name: "港股消费",
-    match: (text: string) =>
-      hk(text) && keywords("消费", "食品饮料", "旅游", "家电")(text),
-  },
 
   // 海外市场
   { id: "us_stock", name: "美股", match: us },
@@ -155,7 +148,7 @@ export const ETF_CATEGORIES = [
   // 国内行业
   {
     id: "military_aerospace",
-    name: "军工航天",
+    name: "军工",
     match: keywords(
       "军工",
       "国防",
@@ -170,11 +163,11 @@ export const ETF_CATEGORIES = [
   {
     id: "semiconductor",
     name: "半导体",
-    match: keywords("半导体", "芯片", "集成电路", "晶圆"),
+    match: keywords("半导体", "芯片", "集成电路", "晶圆", "科创材料"),
   },
   {
     id: "domestic_medical",
-    name: "国内医药医疗",
+    name: "国内医",
     match: keywords(
       "医药",
       "医疗",
@@ -203,7 +196,7 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "software_computer",
-    name: "软件计算机",
+    name: "科技",
     match: keywords(
       "软件",
       "计算机",
@@ -213,6 +206,8 @@ export const ETF_CATEGORIES = [
       "网络信息",
       "数字经济",
       "数字技术",
+      "科技龙头",
+      "科技50",
     ),
   },
   {
@@ -270,7 +265,6 @@ export const ETF_CATEGORIES = [
       "电池",
       "光伏",
       "储能",
-      "绿色电力",
       "绿电",
       "碳中和",
       "低碳",
@@ -281,13 +275,8 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "public_utilities",
-    name: "公用事业",
-    match: keywords("电力指数", "电力产业", "公用事业", "水务", "燃气"),
-  },
-  {
-    id: "infrastructure",
-    name: "基建工程",
-    match: keywords("基建", "基础设施", "建筑工程", "建筑装饰", "工程建设"),
+    name: "电力",
+    match: keywords("电力指数", "电力产业", "绿色电力", "电网设备", "基建"),
   },
   {
     id: "advanced_manufacturing",
@@ -301,9 +290,7 @@ export const ETF_CATEGORIES = [
       "高端制造",
       "智能驾驶",
       "汽车零部件",
-      "电网设备",
       "新材料",
-      "材料",
       "通用航空",
       "船舶",
       "工业自动化",
@@ -313,7 +300,7 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "energy_resources",
-    name: "能源资源",
+    name: "能源",
     match: keywords(
       "有色",
       "稀有金属",
@@ -330,11 +317,12 @@ export const ETF_CATEGORIES = [
       "工业金属",
       "矿业",
       "资源",
+      "上证商品",
     ),
   },
   {
     id: "agriculture",
-    name: "农业养殖",
+    name: "农业",
     match: keywords(
       "农业",
       "养殖",
@@ -348,14 +336,14 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "precious_metals",
-    name: "贵金属商品",
+    name: "黄金",
     match: keywords("黄金", "上海金", "黄金9999", "贵金属", "白银", "金价"),
   },
 
   // 国内宽基
   {
     id: "broad_dual",
-    name: "双创宽基",
+    name: "双创",
     match: keywords(
       "科创50",
       "科创100",
@@ -374,7 +362,7 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "broad_small_mid",
-    name: "中小盘宽基",
+    name: "中小盘",
     match: keywords(
       "中证500",
       "中证800",
@@ -388,7 +376,7 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "broad_large",
-    name: "大盘宽基",
+    name: "大盘",
     match: keywords(
       "沪深300",
       "上证50",
@@ -402,6 +390,7 @@ export const ETF_CATEGORIES = [
       "深证综指",
       "a50",
       "大盘宽基",
+      "成长100",
     ),
   },
 
@@ -432,7 +421,7 @@ export const ETF_CATEGORIES = [
   },
   {
     id: "value_quality",
-    name: "价值质量",
+    name: "价值",
     match: keywords(
       "自由现金流",
       "现金流",
@@ -442,16 +431,11 @@ export const ETF_CATEGORIES = [
       "价值质量",
     ),
   },
-  {
-    id: "growth_strategy",
-    name: "成长策略",
-    match: keywords("成长100", "质量成长", "成长策略", "成长价值"),
-  },
 
   // 港股宽基及兜底
   {
     id: "hk_broad",
-    name: "港股宽基",
+    name: "港股",
     match: hk,
   },
   {

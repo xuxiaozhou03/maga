@@ -1,11 +1,20 @@
-import { fetchCheeseApi, generateV4Timestamp } from "./utils/fetchCheeseApi";
+import { generateV4Timestamp, fetchCheeseApi } from "../utils/fetchCheeseApi";
 
-async function fetchLinkFund(code: string, codes: string[]) {
+export interface LinkFund {
+  target: string;
+  source: string;
+  similar: number;
+}
+
+export async function fetchLinkFund(
+  code: string,
+  codes: string[],
+): Promise<LinkFund[]> {
   try {
     const timestamp = Date.now();
     const t = generateV4Timestamp(String(timestamp));
 
-    const encodedCode = encodeURIComponent(code);
+    const encodedCode = encodeURIComponent(code.replace(".", ""));
 
     const result = await fetchCheeseApi<{
       etfs: Array<{
@@ -19,11 +28,10 @@ async function fetchLinkFund(code: string, codes: string[]) {
       timestamp,
     });
     return result?.etfs
-      ?.filter((item) => codes.includes(item.code))
+      ?.filter((item) => codes.includes(item.code) && item.similar > 80)
       ?.map((item) => ({
         target: code,
         source: item.code,
-        scale: item.scale,
         similar: item.similar,
       }));
   } catch (error) {
@@ -32,27 +40,6 @@ async function fetchLinkFund(code: string, codes: string[]) {
       error instanceof Error ? error.message : error,
     );
 
-    return null;
+    return [];
   }
-}
-
-export async function fetchLinkFunds(codes: string[]) {
-  const results = await Promise.all(
-    codes.map((code) => fetchLinkFund(code.replace(".", ""), codes)),
-  );
-
-  return results.reduce(
-    (acc, item) => {
-      if (item) {
-        return [...(acc || []), ...item];
-      }
-      return acc;
-    },
-    [] as Array<{
-      target: string;
-      source: string;
-      scale: number;
-      similar: number;
-    }>,
-  );
 }

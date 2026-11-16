@@ -11,7 +11,7 @@
  * - amount / volume / scale：保留上游单位
  */
 
-import { Etf } from "./etfs";
+import { Etf } from "./fetch/etfs";
 import { Kline } from "./klines";
 import { Valuation } from "./valuation";
 

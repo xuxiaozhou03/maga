@@ -1,22 +1,14 @@
 import fs from "fs";
-import { fetchEtfs } from "./etfs";
 import { fetchKline } from "./klines";
 import { fetchIndexValuation } from "./valuation";
 import { calculateEtfFeatures } from "./calculateEtfFeatures";
-import { classifyEtfs } from "./etf-categories";
-import { fetchLinkFunds } from "./linkFund";
+import { classifyEtfs } from "./data/etf-categories";
+import { fetchEtfs } from "./data/etf-list";
 
 const main = async () => {
   const etfs = await fetchEtfs();
 
-  const codes = etfs.map((etf) => etf.code);
-  const linkFund = await fetchLinkFunds(codes);
-  fs.writeFileSync(`./output/linkFunds.json`, JSON.stringify(linkFund));
-  return;
-
   fs.writeFileSync("./output/etfs.json", JSON.stringify(etfs));
-
-  const classifies = await classifyEtfs(etfs);
   const fields = [
     "category",
     "name",
@@ -26,37 +18,41 @@ const main = async () => {
     "scale",
   ];
   fs.writeFileSync(
-    "./output/classifyEtfs.csv",
+    "./output/etfs.csv",
     [
       fields.join(","),
-      ...classifies.map((item: any) => fields.map((field) => item[field])),
+      ...etfs.map((item: any) => fields.map((field) => item[field])),
     ].join("\n"),
   );
 
   return;
-  const etf = etfs[0];
-  const klines = await fetchKline(etf.code);
 
-  fs.writeFileSync(`./output/${etf.code}-klines.json`, JSON.stringify(klines));
+  // const classifies = await classifyEtfs(etfs);
 
-  const pe = await fetchIndexValuation(etf.trackIndex, "PE");
-  fs.writeFileSync(`./output/${etf.trackIndex}-pe.json`, JSON.stringify(pe));
+  // return;
+  // const etf = etfs[0];
+  // const klines = await fetchKline(etf.code);
 
-  const pb = await fetchIndexValuation(etf.trackIndex, "PB");
-  fs.writeFileSync(`./output/${etf.trackIndex}-pb.json`, JSON.stringify(pb));
+  // fs.writeFileSync(`./output/${etf.code}-klines.json`, JSON.stringify(klines));
 
-  const ps = await fetchIndexValuation(etf.trackIndex, "PS");
-  fs.writeFileSync(`./output/${etf.trackIndex}-ps.json`, JSON.stringify(ps));
+  // const pe = await fetchIndexValuation(etf.trackIndex, "PE");
+  // fs.writeFileSync(`./output/${etf.trackIndex}-pe.json`, JSON.stringify(pe));
 
-  const etfFeatures = await calculateEtfFeatures(etf, klines, [
-    ...pe,
-    ...pb,
-    ...ps,
-  ]);
-  fs.writeFileSync(
-    `./output/${etf.code}-features.json`,
-    JSON.stringify(etfFeatures),
-  );
+  // const pb = await fetchIndexValuation(etf.trackIndex, "PB");
+  // fs.writeFileSync(`./output/${etf.trackIndex}-pb.json`, JSON.stringify(pb));
+
+  // const ps = await fetchIndexValuation(etf.trackIndex, "PS");
+  // fs.writeFileSync(`./output/${etf.trackIndex}-ps.json`, JSON.stringify(ps));
+
+  // const etfFeatures = await calculateEtfFeatures(etf, klines, [
+  //   ...pe,
+  //   ...pb,
+  //   ...ps,
+  // ]);
+  // fs.writeFileSync(
+  //   `./output/${etf.code}-features.json`,
+  //   JSON.stringify(etfFeatures),
+  // );
 };
 
 main().finally(() => {

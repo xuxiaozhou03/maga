@@ -31,7 +31,7 @@ export const magaCodes = [
   "SP5CSSUP.SPI",
 ];
 
-export async function fetchEtfs() {
+export async function fetchOriginalEtfs() {
   const ret = await fetch(
     "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",
     {
