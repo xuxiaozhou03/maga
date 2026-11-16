@@ -4,9 +4,15 @@ import { fetchKline } from "./klines";
 import { fetchIndexValuation } from "./valuation";
 import { calculateEtfFeatures } from "./calculateEtfFeatures";
 import { classifyEtfs } from "./etf-categories";
+import { fetchLinkFunds } from "./linkFund";
 
 const main = async () => {
   const etfs = await fetchEtfs();
+
+  const codes = etfs.map((etf) => etf.code);
+  const linkFund = await fetchLinkFunds(codes);
+  fs.writeFileSync(`./output/linkFunds.json`, JSON.stringify(linkFund));
+  return;
 
   fs.writeFileSync("./output/etfs.json", JSON.stringify(etfs));
 
@@ -27,6 +33,7 @@ const main = async () => {
     ].join("\n"),
   );
 
+  return;
   const etf = etfs[0];
   const klines = await fetchKline(etf.code);
 
