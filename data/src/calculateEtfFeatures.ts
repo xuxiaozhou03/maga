@@ -12,8 +12,8 @@
  */
 
 import { Etf } from "./fetch/etfs";
-import { Kline } from "./klines";
-import { Valuation } from "./valuation";
+import { Kline } from "./data/klines";
+import { Valuation } from "./data/valuation";
 
 // ==================================================
 // 1. 返回类型定义

@@ -1,3 +1,3 @@
 export { fetchOriginalEtfs as fetchEtfs, type Etf } from "./fetch/etfs";
-export { fetchKline, type Kline } from "./klines";
-export { fetchIndexValuation, type Valuation } from "./valuation";
+export { fetchKline, type Kline } from "./data/klines";
+export { fetchIndexValuation, type Valuation } from "./data/valuation";

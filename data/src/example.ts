@@ -1,6 +1,6 @@
 import fs from "fs";
-import { fetchKline } from "./klines";
-import { fetchIndexValuation } from "./valuation";
+import { fetchKline } from "./data/klines";
+import { fetchIndexValuation } from "./data/valuation";
 import { calculateEtfFeatures } from "./calculateEtfFeatures";
 import { classifyEtfs } from "./data/etf-categories";
 import { fetchEtfs } from "./data/etf-list";
