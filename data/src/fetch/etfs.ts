@@ -72,7 +72,8 @@ export async function fetchOriginalEtfs() {
         scale! < 300000000 ||
         (map[trackIndex] && map[trackIndex].scale > scale!) ||
         !amount ||
-        Number(amount) < 13000000
+        Number(amount) < 13000000 ||
+        ["560170.SH", "512090.SH", "159623.SZ"].includes(securityCode)
       ) {
         return;
       }

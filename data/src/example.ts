@@ -8,11 +8,11 @@ import { fetchEtfs } from "./data/etf-list";
 const main = async () => {
   const etfs = await fetchEtfs();
 
-  fs.writeFileSync("./output/etfs.json", JSON.stringify(etfs));
   const fields = [
     "category",
     "name",
     "code",
+    "trackIndex",
     "trackingIndex",
     "premiumRate",
     "scale",
