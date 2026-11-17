@@ -1,4 +1,4 @@
-import { Etf } from "../type";
+import { EtfNotCategory } from "../type";
 
 interface OriginalEtf {
   securityName: string;
@@ -11,19 +11,7 @@ interface OriginalEtf {
   amount: string;
 }
 
-export const magaCodes = [
-  "NDX.GI",
-  "SPTR500N.SPI",
-  "NDXTMC.GI",
-  "SPX.GI",
-  "DJI.GI",
-  "750108.MI",
-  "NBI.GI",
-  "SPSIBI.SPI",
-  "SP5CSSUP.SPI",
-];
-
-export async function fetchOriginalEtfs() {
+export async function fetchEtfs() {
   const ret = await fetch(
     "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",
     {
@@ -44,7 +32,7 @@ export async function fetchOriginalEtfs() {
     data: { data: OriginalEtf[] };
   };
 
-  const map: Record<string, Omit<Etf, "category">> = {};
+  const map: Record<string, EtfNotCategory> = {};
   res.data.data.forEach(
     ({
       securityCode,

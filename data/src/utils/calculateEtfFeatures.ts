@@ -263,11 +263,9 @@ export interface ValuationFeatures {
 // 8. 最终结果
 // ============================================================
 
-export interface EtfFeatures {
-  etf: Etf;
-  data: DataFeatures;
-  market: MarketFeatures;
+type MixType = Etf & DataFeatures & MarketFeatures;
 
+export interface EtfFeatures extends MixType {
   performance: PerformanceFeatures;
 
   movingAverages: MovingAverages;
@@ -417,57 +415,6 @@ function dateDiffDays(from: number, to: number): number {
   const diff = toDate(to).getTime() - toDate(from).getTime();
   return Math.max(0, Math.floor(diff / 86400000));
 }
-
-function sortKlines(klines: Kline[]): Kline[] {
-  const map = new Map<number, Kline>();
-
-  for (const item of klines) {
-    if (
-      !Number.isInteger(item.date) ||
-      !isFiniteNumber(item.close) ||
-      item.close <= 0
-    ) {
-      continue;
-    }
-
-    map.set(item.date, item);
-  }
-
-  return [...map.values()].sort((a, b) => a.date - b.date);
-}
-
-function sortValuations(valuations: Valuation[]): Valuation[] {
-  return [...valuations]
-    .filter((item) => Number.isInteger(item.date) && isFiniteNumber(item.value))
-    .sort((a, b) => a.date - b.date);
-}
-
-// ============================================================
-// 11. 行情计算
-// ============================================================
-
-function calculateDataFeatures(klines: Kline[]): DataFeatures {
-  return {
-    latestDate: klines.at(-1)?.date ?? 0,
-    earliestDate: klines[0]?.date ?? 0,
-    totalTradingDays: klines.length,
-  };
-}
-
-function calculateMarketFeatures(latest: Kline | undefined): MarketFeatures {
-  return {
-    close: latest?.close!,
-    change: latest?.change!,
-    changePercent: latest ? latest.changePercent / 100 : 0,
-
-    high: latest?.high!,
-    low: latest?.low!,
-
-    volume: latest?.volume!,
-    amount: latest?.amount!,
-  };
-}
-
 // ============================================================
 // 12. 多周期表现计算
 // ============================================================
@@ -1449,28 +1396,22 @@ function calculateSingleValuation(
 }
 
 function calculateValuation(
-  etf: Etf,
   valuations: Valuation[],
   latestDate: number,
 ): ValuationFeatures {
-  // 估值 code 对应 ETF 跟踪指数代码
-  const indexRecords = sortValuations(
-    valuations.filter((item) => item.code === etf.trackIndex),
-  );
-
   return {
     PE: calculateSingleValuation(
-      indexRecords.filter((item) => item.type === "PE"),
+      valuations.filter((item) => item.type === "PE"),
       latestDate,
     ),
 
     PB: calculateSingleValuation(
-      indexRecords.filter((item) => item.type === "PB"),
+      valuations.filter((item) => item.type === "PB"),
       latestDate,
     ),
 
     PS: calculateSingleValuation(
-      indexRecords.filter((item) => item.type === "PS"),
+      valuations.filter((item) => item.type === "PS"),
       latestDate,
     ),
   };
@@ -1480,37 +1421,23 @@ function calculateValuation(
 // 18. 主入口
 // ============================================================
 
-export function calculateEtfFeatures(
-  etf: Etf,
-  klines: Kline[],
-  valuations: Valuation[],
-): EtfFeatures {
-  const sortedKlines = sortKlines(
-    klines.filter((item) => item.code === etf.code),
-  );
-
-  const latest = sortedKlines.at(-1);
+export function calculateEtfFeatures(klines: Kline[], valuations: Valuation[]) {
+  const latest = klines.at(-1);
   const latestDate = latest?.date ?? 0;
 
-  const data = calculateDataFeatures(sortedKlines);
-  const market = calculateMarketFeatures(latest);
-
-  const movingAverages = calculateMovingAverages(sortedKlines);
+  const movingAverages = calculateMovingAverages(klines);
 
   return {
-    etf,
+    changePercent: latest?.changePercent,
 
-    data,
-    market,
-
-    performance: calculatePerformance(sortedKlines),
+    performance: calculatePerformance(klines),
 
     movingAverages,
 
-    maDeviation: calculateMADeviation(sortedKlines, movingAverages),
+    maDeviation: calculateMADeviation(klines, movingAverages),
 
-    bollinger: calculateBollinger(sortedKlines),
+    bollinger: calculateBollinger(klines),
 
-    valuation: calculateValuation(etf, valuations, latestDate),
+    valuation: calculateValuation(valuations, latestDate),
   };
 }
