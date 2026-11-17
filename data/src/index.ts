@@ -5,7 +5,8 @@ import { Etf, EtfNotCategory } from "./type";
 import { runStep } from "./utils/runStep";
 import { fetchKline } from "./fetch/klines";
 import { fetchIndexValuation } from "./fetch/valuation";
-import { calculateEtfFeatures } from "./utils/calculateEtfFeatures";
+import { calculateEtfFeatures, EtfFeatures } from "./calculate/etfFeature";
+import { analyzeEtfs, EtfFeatureMap } from "./calculate/analyzeEtfs";
 
 const findNotRepeatEtfs = async (etfs: EtfNotCategory[]) => {
   const etfsMap = etfs.reduce(
@@ -43,20 +44,50 @@ const main = async () => {
     async () =>
       etfNotCategories.filter((etf) => !repeatCodes.includes(etf.code)),
   );
-  const etfs = await runStep<Etf[]>("etfs.json", async () =>
-    groupEtfCategory(notRepeatEtfs),
+  const etfs = await runStep<Etf[]>(
+    "etfs.csv",
+    async () => groupEtfCategory(notRepeatEtfs),
+    [
+      "category",
+      "code",
+      "name",
+      "scale",
+      "trackingIndex",
+      "trackIndex",
+      "premiumRate",
+    ],
   );
-  const etf = etfs.find((etf) => etf.code === "510300.SH");
-  if (etf) {
-    await runStep(`${etf.code}.json`, async () => {
-      const klines = await fetchKline(etf.code);
-      const pe = await fetchIndexValuation(etf.trackIndex, "PE");
-      const pb = await fetchIndexValuation(etf.trackIndex, "PB");
-      const ps = await fetchIndexValuation(etf.trackIndex, "PS");
-      const etfFeatures = calculateEtfFeatures(klines, [...pe, ...pb, ...ps]);
-      return etfFeatures;
-    });
-  }
+  return;
+
+  const ps = etfs.slice(0, 5).map(async (etf) =>
+    runStep<{ code: string; features: EtfFeatures }>(
+      `${etf.code}.json`,
+      async () => {
+        const klines = await fetchKline(etf.code);
+        const etfFeatures = calculateEtfFeatures(klines, {
+          PE: await fetchIndexValuation(etf.trackIndex, "PE"),
+          PB: await fetchIndexValuation(etf.trackIndex, "PB"),
+          PS: await fetchIndexValuation(etf.trackIndex, "PS"),
+        });
+        return {
+          code: etf.code,
+          features: etfFeatures,
+        };
+      },
+    ),
+  );
+  const result = await Promise.all(ps);
+  await runStep("all.json", async () => {
+    return analyzeEtfs(
+      result.reduce(
+        (acc, item) => ({
+          ...acc,
+          [item.code]: item.features,
+        }),
+        {} as EtfFeatureMap,
+      ),
+    );
+  });
 };
 
 main().finally(() => {
