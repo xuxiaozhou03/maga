@@ -1,4 +1,4 @@
-import { EtfNotCategory } from "../type";
+import { EtfWithoutCategory } from "../type";
 
 interface OriginalEtf {
   securityName: string;
@@ -32,7 +32,7 @@ export async function fetchEtfs() {
     data: { data: OriginalEtf[] };
   };
 
-  const map: Record<string, EtfNotCategory> = {};
+  const map: Record<string, EtfWithoutCategory> = {};
   res.data.data.forEach(
     ({
       securityCode,

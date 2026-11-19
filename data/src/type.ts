@@ -9,7 +9,7 @@ export interface Etf {
   category: string;
 }
 
-export type EtfNotCategory = Omit<Etf, "category">;
+export type EtfWithoutCategory = Omit<Etf, "category">;
 
 export const magaCodes = [
   "NDX.GI",

@@ -65,6 +65,4 @@ class Source {
 
 const source = new Source();
 
-export const appendFeaturesCsv = () => {};
-
 export default source;

@@ -1,6 +1,6 @@
-import { Etf, EtfNotCategory } from "../type";
+import { Etf, EtfWithoutCategory } from "../type";
 
-export const groupEtfCategory = (notRepeatEtfs: EtfNotCategory[]) => {
+export const groupEtfCategory = (notRepeatEtfs: EtfWithoutCategory[]) => {
   const Categories = [
     {
       name: "农业",
