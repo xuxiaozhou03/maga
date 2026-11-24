@@ -1,0 +1,20 @@
+{
+  "name": "maga",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "crawler": "tsx src/crawler/index.ts",
+    "analyze": "tsx src/analyze/index.ts"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.23",
+    "crypto-js": "^4.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "@types/crypto-js": "^4.2.2"
+  }
+}

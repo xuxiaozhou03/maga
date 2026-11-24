@@ -28,7 +28,7 @@
  *   - 不修改输入数据
  */
 
-import { Kline } from "../fetch/klines";
+import { Kline } from "../crawler/fetchKline";
 
 // ============================================================
 // 1. 基础类型

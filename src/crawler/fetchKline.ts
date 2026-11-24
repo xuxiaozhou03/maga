@@ -47,7 +47,7 @@ const fetchPageKline = async (code: string, begin: number, count = 1000) => {
     };
   };
   const columns = ret.data.columns.split(",");
-  if (!ret.data.items) {
+  if (!ret.data?.items) {
     return [];
   }
   const items = ret.data.items.split(";").map((item) => {

@@ -1,6 +1,66 @@
-import { Etf, EtfWithoutCategory } from "../type";
+import { fetchLinkFund } from "./fetchLinkFund";
 
-export const groupEtfCategory = (notRepeatEtfs: EtfWithoutCategory[]) => {
+interface OriginalEtf {
+  securityName: string;
+  securityCode: string;
+  scale: number | null;
+  trackingIndex: string | null;
+  trackIndex: string | null;
+  premiumRate: string | number | null;
+  amount: string;
+}
+export type Etf = {
+  code: string;
+  name: string;
+  trackingIndex: string;
+  trackIndex: string;
+  scale: number;
+  premiumRate?: number | undefined;
+  category: string;
+};
+
+const magaCodes = [
+  "NDX.GI",
+  "SPTR500N.SPI",
+  "NDXTMC.GI",
+  "SPX.GI",
+  "DJI.GI",
+  "750108.MI",
+  "NBI.GI",
+  "SPSIBI.SPI",
+  "SP5CSSUP.SPI",
+];
+
+const filterEtfs = ({
+  trackIndex,
+  securityCode,
+  securityName,
+  scale,
+  amount,
+}: OriginalEtf) => {
+  if (magaCodes.includes(trackIndex!)) {
+    return true;
+  }
+
+  if (
+    !securityCode ||
+    !securityName ||
+    !trackIndex ||
+    ["短融", "债"].find((item) => securityName.includes(item)) ||
+    // 规模小于 3 亿过滤掉
+    scale! < 300000000 ||
+    // (map[trackIndex] && map[trackIndex].scale > scale!) ||
+    !amount ||
+    Number(amount) < 13000000 ||
+    ["560170.SH", "512090.SH", "159623.SZ"].includes(securityCode)
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
+const getEtfCategory = (trackingIndex: string) => {
   const Categories = [
     {
       name: "农业",
@@ -179,15 +239,81 @@ export const groupEtfCategory = (notRepeatEtfs: EtfWithoutCategory[]) => {
       ],
     },
   ] as const;
-  return notRepeatEtfs
-    .map<Etf>((etf) => {
-      const category = Categories.find((cate) => {
-        return cate.keywords.find((key) => etf.trackingIndex.includes(key));
-      });
-      if (category) {
-        return { ...etf, category: category.name };
-      }
-      return { ...etf, category: "_______" };
-    })
-    .sort((a, b) => (a.category > b.category ? 1 : -1));
+  return Categories.find((cate) => {
+    return cate.keywords.find((key) => trackingIndex.includes(key));
+  })?.name;
 };
+
+export async function fetchEtfs() {
+  const ret = await fetch(
+    "https://hongsehuojian.com/fundex-quote/allPage/findListByEtf?classA=&classB=&orderBy=l.scale&order=desc&searchValue=&isSelected=&pageNo=1&pageSize=2000&position=",
+    {
+      headers: {
+        accept: "application/json, text/plain, */*",
+        "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "cache-control": "no-cache",
+        pragma: "no-cache",
+        pro: "RedRocket-PC",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+      },
+      method: "GET",
+    },
+  );
+  const res = (await ret.json()) as {
+    data: { data: OriginalEtf[] };
+  };
+  const etfMap = res.data.data.filter(filterEtfs).reduce(
+    (prev, cur) => {
+      const category = getEtfCategory(cur.trackingIndex!);
+      if (!category) {
+        return prev;
+      }
+      const etf: Etf = {
+        code: cur.securityCode,
+        name: cur.securityName,
+        scale: cur.scale ?? 0,
+        trackIndex: cur.trackIndex!,
+        trackingIndex: cur.trackingIndex!,
+        premiumRate: cur.premiumRate
+          ? parseFloat(cur.premiumRate + "")
+          : undefined,
+        category,
+      };
+      if (magaCodes.includes(cur.trackIndex!)) {
+        prev[`maga_${etf.code}`] = etf;
+        return prev;
+      }
+
+      if (!prev[etf.trackIndex] || prev[etf.trackIndex].scale < etf.scale) {
+        prev[etf.trackIndex] = etf;
+        return prev;
+      }
+
+      return prev;
+    },
+    {} as Record<string, Etf>,
+  );
+  const etfs = Object.values(etfMap).sort((a, b) =>
+    a.scale > b.scale ? -1 : 1,
+  );
+  console.log(etfs.length);
+  const codes = etfs
+    .filter((etf) => !magaCodes.includes(etf.code))
+    .map((etf) => etf.code);
+  const linkFunds = await Promise.all(
+    codes.map((code) => fetchLinkFund(code, codes)),
+  );
+  const repeatCodes = linkFunds.flat(1).map((linkFund) => {
+    if (
+      etfs.findIndex((etf) => etf.code === linkFund.target) >
+      etfs.findIndex((etf) => etf.code === linkFund.source)
+    ) {
+      return linkFund.target;
+    }
+    return linkFund.source;
+  });
+  console.log("repeat", [...new Set(repeatCodes)]);
+  return etfs.filter((etf) => !repeatCodes.includes(etf.code));
+}

@@ -1,4 +1,4 @@
-import { generateV4Timestamp, fetchCheeseApi } from "../utils/fetchCheeseApi";
+import { generateV4Timestamp, fetchCheeseApi } from "./fetchCheeseApi";
 
 export interface LinkFund {
   target: string;
